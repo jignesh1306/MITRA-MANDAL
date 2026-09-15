@@ -4,7 +4,7 @@ import { User } from '../models/User.js';
 import { Group, generate6DigitCode } from '../models/Group.js';
 import { GroupMember } from '../models/GroupMember.js';
 
-const ADMIN_SECRET_CODE = '101005';
+const getAdminSecretCode = () => process.env.ADMIN_SECRET_CODE || '101005';
 
 const generateTokens = (id) => {
   const token = jwt.sign({ id }, process.env.JWT_SECRET || 'super_secret_mitra_mandal_key_2026_jwt_access', {
@@ -44,8 +44,9 @@ export const register = async (req, res, next) => {
 
     const isAdminSignup = role === 'ADMIN';
     if (isAdminSignup) {
-      if (!adminSecretCode || adminSecretCode.trim() !== ADMIN_SECRET_CODE) {
-        return res.status(400).json({ message: 'Invalid Admin Secret Code. Correct code (101005) is required to register as Admin.' });
+      const activeCode = getAdminSecretCode();
+      if (!adminSecretCode || adminSecretCode.trim() !== activeCode) {
+        return res.status(400).json({ message: `Invalid Admin Secret Code. Correct code is required to register as Admin.` });
       }
     }
 
