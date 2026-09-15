@@ -20,6 +20,8 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { MemberProfile } from './pages/MemberProfile';
 import { MemberDirectoryPage } from './pages/MemberDirectoryPage';
 import { MemberDetailViewPage } from './pages/MemberDetailViewPage';
+import { SubmitEMIPage } from './pages/SubmitEMIPage';
+import { AdminEMISubmissionsPage } from './pages/AdminEMISubmissionsPage';
 
 import { AdminDashboard } from './pages/AdminDashboard';
 import { MembersPage } from './pages/MembersPage';
@@ -119,11 +121,21 @@ export default function App() {
                 <MemberDetailViewPage />
               </ProtectedRoute>
             } />
+            <Route path="/member/submit-emi" element={
+              <ProtectedRoute allowedRoles={['MEMBER', 'ADMIN']}>
+                <SubmitEMIPage />
+              </ProtectedRoute>
+            } />
 
             {/* Admin Routes */}
             <Route path="/admin" element={
               <ProtectedRoute allowedRoles={['ADMIN']}>
                 <AdminDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/emi-submissions" element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <AdminEMISubmissionsPage />
               </ProtectedRoute>
             } />
             <Route path="/admin/members" element={

@@ -14,6 +14,7 @@ export const Sidebar = () => {
 
   const memberNav = [
     { to: '/member', label: 'Dashboard', icon: Home, end: true },
+    { to: '/member/submit-emi', label: 'Submit EMI', icon: Wallet },
     { to: '/member/contributions', label: 'My Fund', icon: Wallet },
     { to: '/member/loans', label: 'My Loans', icon: BadgeIndianRupee },
     { to: '/member/directory', label: 'Members', icon: Users },
@@ -23,6 +24,7 @@ export const Sidebar = () => {
 
   const adminNav = [
     { to: '/admin', label: 'Dashboard', icon: Home, end: true },
+    { to: '/admin/emi-submissions', label: 'EMI Submissions', icon: Wallet },
     { to: '/admin/members', label: 'Members', icon: Users },
     { to: '/admin/contributions', label: 'Contributions', icon: Wallet },
     { to: '/admin/fund', label: 'Fund Ledger', icon: TrendingUp },

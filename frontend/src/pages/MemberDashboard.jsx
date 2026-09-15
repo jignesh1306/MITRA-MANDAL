@@ -72,32 +72,35 @@ export const MemberDashboard = () => {
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {/* Button 1: Submit Your EMI (Disabled / Placeholder for future build) */}
-          <motion.button
-            type="button"
+          {/* Button 1: Submit Your EMI */}
+          <motion.div
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => alert('Submit EMI payment feature is coming soon!')}
-            className="p-5 rounded-3xl bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-emerald-300 text-left transition-all group flex items-center gap-4 cursor-pointer relative"
           >
-            <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-              <CreditCard className="w-7 h-7" />
-            </div>
-
-            <div className="space-y-0.5 flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-1">
-                <h3 className="text-base font-black text-gray-900 group-hover:text-emerald-700 transition-colors truncate">
-                  Submit Your EMI
-                </h3>
+            <Link
+              to="/member/submit-emi"
+              className="p-5 rounded-3xl bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-emerald-300 text-left transition-all group flex items-center gap-4 relative"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                <CreditCard className="w-7 h-7" />
               </div>
-              <p className="text-xs text-gray-500 font-medium leading-tight">
-                Pay your monthly loan installment online
-              </p>
-              <span className="inline-block text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 mt-1">
-                Coming Soon
-              </span>
-            </div>
-          </motion.button>
+
+              <div className="space-y-0.5 flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-1">
+                  <h3 className="text-base font-black text-gray-900 group-hover:text-emerald-700 transition-colors truncate">
+                    Submit Your EMI
+                  </h3>
+                  <ArrowUpRight className="w-4 h-4 text-gray-400 group-hover:text-emerald-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
+                </div>
+                <p className="text-xs text-gray-500 font-medium leading-tight">
+                  Submit fund contribution or loan EMI with proof
+                </p>
+                <span className="inline-block text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 mt-1">
+                  Active Feature
+                </span>
+              </div>
+            </Link>
+          </motion.div>
 
           {/* Button 2: Apply for Loan */}
           <motion.div
