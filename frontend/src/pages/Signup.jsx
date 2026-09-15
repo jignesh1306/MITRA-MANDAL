@@ -39,8 +39,8 @@ export const Signup = () => {
       return setError('Passwords do not match.');
     }
 
-    if (!isUserSignup && formData.adminSecretCode.trim() !== '101005') {
-      return setError('Invalid Secret Code. Admin secret code (101005) is required to signup as Admin.');
+    if (!isUserSignup && !formData.adminSecretCode.trim()) {
+      return setError('Admin secret code is required to register as Admin.');
     }
 
     setLoading(true);
@@ -171,7 +171,7 @@ export const Signup = () => {
                 <input
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value.replace(/,/g, '.') })}
                   placeholder="name@example.com (optional)"
                   className="w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:border-brand-600 outline-hidden transition-all"
                 />
