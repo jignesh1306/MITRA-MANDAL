@@ -29,7 +29,12 @@ export const register = async (req, res, next) => {
   try {
     const { name, phone, email, password, role, adminSecretCode } = req.body;
 
-    const existing = await User.findOne({ phone: phone.trim() });
+    if (!name || !phone || !password) {
+      return res.status(400).json({ message: 'Full name, mobile number, and password are required.' });
+    }
+
+    const cleanPhone = String(phone).trim();
+    const existing = await User.findOne({ phone: cleanPhone });
     if (existing) {
       return res.status(400).json({ message: 'An account with this mobile number already exists.' });
     }
@@ -58,7 +63,7 @@ export const register = async (req, res, next) => {
 
     const user = await User.create({
       name,
-      phone: phone.trim(),
+      phone: cleanPhone,
       email: email || '',
       passwordHash,
       role: isAdminSignup ? 'ADMIN' : 'MEMBER',
