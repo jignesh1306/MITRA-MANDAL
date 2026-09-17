@@ -13,8 +13,8 @@ const startServer = (port) => {
 
   server.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
-      console.warn(`[PORT WARNING] Port ${port} is occupied. Attempting port ${port + 1}...`);
-      startServer(port + 1);
+      console.error(`[PORT ERROR] Port ${port} is occupied by an old background process. Retrying in 1 second...`);
+      setTimeout(() => startServer(port), 1000);
     } else {
       console.error('[SERVER ERROR]', err);
     }
