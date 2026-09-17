@@ -5,6 +5,15 @@ import { generateMonthlyContributions, markContributionPaid } from '../services/
 export const getContributions = async (req, res, next) => {
   try {
     const { month, year, memberId, status } = req.query;
+    
+    // Auto-ensure contribution records exist for active group members for target month/year
+    if (month && year) {
+      const group = await Group.findOne();
+      if (group) {
+        await generateMonthlyContributions(group._id, Number(month), Number(year));
+      }
+    }
+
     const query = {};
     if (month) query.month = Number(month);
     if (year) query.year = Number(year);
@@ -12,11 +21,13 @@ export const getContributions = async (req, res, next) => {
     if (memberId) query.memberId = memberId;
 
     const list = await Contribution.find(query)
-      .populate('memberId', 'name email phone profilePhoto')
+      .populate('memberId', 'name email phone profilePhoto status role')
       .populate('recordedBy', 'name')
       .sort({ year: -1, month: -1, 'memberId.name': 1 });
 
-    res.json(list);
+    const memberContributionsOnly = list.filter(item => item.memberId && item.memberId.role !== 'ADMIN');
+
+    res.json(memberContributionsOnly);
   } catch (error) {
     next(error);
   }

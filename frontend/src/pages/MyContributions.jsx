@@ -39,7 +39,7 @@ export const MyContributions = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6 pb-24">
+    <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6 pb-4">
       {/* Total Paid Fund Header Card */}
       <motion.div 
         initial={{ opacity: 0, y: 15 }}

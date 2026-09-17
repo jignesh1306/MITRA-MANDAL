@@ -8,10 +8,10 @@ const getAdminSecretCode = () => process.env.ADMIN_SECRET_CODE || '101005';
 
 const generateTokens = (id) => {
   const token = jwt.sign({ id }, process.env.JWT_SECRET || 'super_secret_mitra_mandal_key_2026_jwt_access', {
-    expiresIn: '7d'
+    expiresIn: '60d'
   });
   const refreshToken = jwt.sign({ id }, process.env.JWT_REFRESH_SECRET || 'super_secret_mitra_mandal_key_2026_jwt_refresh', {
-    expiresIn: '30d'
+    expiresIn: '90d'
   });
   return { token, refreshToken };
 };
@@ -21,7 +21,7 @@ const setTokenCookie = (res, token) => {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    maxAge: 60 * 24 * 60 * 60 * 1000 // 60 days
   });
 };
 
@@ -34,9 +34,14 @@ export const register = async (req, res, next) => {
     }
 
     const cleanPhone = String(phone).trim();
-    const existing = await User.findOne({ phone: cleanPhone });
+    const targetRole = role === 'ADMIN' ? 'ADMIN' : 'MEMBER';
+
+    // Check if account with same phone AND role already exists
+    const existing = await User.findOne({ phone: cleanPhone, role: targetRole });
     if (existing) {
-      return res.status(400).json({ message: 'An account with this mobile number already exists.' });
+      return res.status(400).json({ 
+        message: `An account with this mobile number already exists for ${targetRole === 'ADMIN' ? 'Admin' : 'User'} login.` 
+      });
     }
 
     let group = await Group.findOne();
@@ -47,7 +52,7 @@ export const register = async (req, res, next) => {
       });
     }
 
-    const isAdminSignup = role === 'ADMIN';
+    const isAdminSignup = targetRole === 'ADMIN';
     if (isAdminSignup) {
       const activeCode = getAdminSecretCode();
       if (!adminSecretCode || adminSecretCode.trim() !== activeCode) {
@@ -66,7 +71,7 @@ export const register = async (req, res, next) => {
       phone: cleanPhone,
       email: email || '',
       passwordHash,
-      role: isAdminSignup ? 'ADMIN' : 'MEMBER',
+      role: targetRole,
       status: userStatus
     });
 
@@ -114,8 +119,17 @@ export const register = async (req, res, next) => {
 
 export const login = async (req, res, next) => {
   try {
-    const { phone, password } = req.body;
-    const user = await User.findOne({ phone: phone.trim() });
+    const { phone, password, role } = req.body;
+    const cleanPhone = String(phone).trim();
+    const targetRole = role ? (role === 'ADMIN' ? 'ADMIN' : 'MEMBER') : null;
+
+    let user = null;
+    if (targetRole) {
+      user = await User.findOne({ phone: cleanPhone, role: targetRole });
+    }
+    if (!user) {
+      user = await User.findOne({ phone: cleanPhone });
+    }
 
     if (!user || !(await user.matchPassword(password))) {
       return res.status(401).json({ message: 'Invalid mobile number or password.' });
@@ -154,9 +168,14 @@ export const login = async (req, res, next) => {
 
 export const forgotPassword = async (req, res, next) => {
   try {
-    const { phone, code, newPassword } = req.body;
+    const { phone, code, newPassword, role } = req.body;
+    const cleanPhone = String(phone).trim();
+    const targetRole = role === 'ADMIN' ? 'ADMIN' : 'MEMBER';
 
-    const user = await User.findOne({ phone: phone.trim() });
+    let user = await User.findOne({ phone: cleanPhone, role: targetRole });
+    if (!user) {
+      user = await User.findOne({ phone: cleanPhone });
+    }
     if (!user) {
       return res.status(404).json({ message: 'No account found with this mobile number.' });
     }

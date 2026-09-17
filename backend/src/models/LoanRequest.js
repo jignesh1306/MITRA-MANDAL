@@ -10,6 +10,7 @@ const loanRequestSchema = new mongoose.Schema({
   purpose: { type: String, required: true },
   note: { type: String, default: '' },
   status: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'], default: 'PENDING' },
+  transferProofUrl: { type: String, default: '' },
   reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   reviewedAt: { type: Date },
   rejectionReason: { type: String, default: '' }

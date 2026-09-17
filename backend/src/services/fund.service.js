@@ -15,14 +15,22 @@ export const getFundSummary = async (groupId) => {
   for (const t of transactions) {
     if (t.type === 'INCOME') {
       totalIncome += t.amount;
-      if (t.category === 'MEMBER_CONTRIBUTION') totalContributions += t.amount;
-      if (t.category === 'LOAN_INTEREST') totalLoanInterest += t.amount;
-      if (t.category === 'OTHER_REVENUE') totalOtherRevenue += t.amount;
-      if (t.category === 'LOAN_REPAYMENT_PRINCIPAL') totalLoanRepaymentsPrincipal += t.amount;
+      if (t.category === 'MEMBER_CONTRIBUTION' || t.category === 'CONTRIBUTION') {
+        totalContributions += t.amount;
+      } else if (t.category === 'LOAN_INTEREST') {
+        totalLoanInterest += t.amount;
+      } else if (t.category === 'LOAN_REPAYMENT_PRINCIPAL' || t.category === 'LOAN_REPAYMENT') {
+        totalLoanRepaymentsPrincipal += t.amount;
+      } else {
+        totalOtherRevenue += t.amount;
+      }
     } else if (t.type === 'EXPENSE') {
       totalExpense += t.amount;
-      if (t.category === 'LOAN_DISBURSEMENT') totalLoansGiven += t.amount;
-      if (t.category === 'GROUP_EXPENSE') totalExpenses += t.amount;
+      if (t.category === 'LOAN_DISBURSEMENT') {
+        totalLoansGiven += t.amount;
+      } else {
+        totalExpenses += t.amount;
+      }
     }
   }
 

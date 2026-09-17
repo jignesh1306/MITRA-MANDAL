@@ -13,9 +13,12 @@ const loanSchema = new mongoose.Schema({
   status: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED', 'ACTIVE', 'COMPLETED'], default: 'PENDING' },
   purpose: { type: String, default: '' },
   note: { type: String, default: '' },
+  transferProofUrl: { type: String, default: '' },
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   approvedAt: { type: Date },
-  completedAt: { type: Date }
+  completedAt: { type: Date },
+  isHistorical: { type: Boolean, default: false },
+  historicalType: { type: String, enum: ['COMPLETED', 'RUNNING', 'NONE'], default: 'NONE' }
 }, {
   timestamps: true
 });

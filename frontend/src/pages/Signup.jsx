@@ -71,7 +71,7 @@ export const Signup = () => {
   return (
     <div className="min-h-[85vh] flex flex-col items-center justify-center p-4">
       <div className="max-w-md w-full mb-3 flex items-center justify-between">
-        <BackButton fallback="/" label="Back to Home" />
+        <BackButton to="/" label="Back to Home" />
       </div>
 
       <motion.div 
@@ -281,33 +281,13 @@ export const Signup = () => {
           </form>
         )}
 
-        <div className="mt-6 text-center text-xs text-gray-500 space-y-2">
-          <div>
-            Already have an account?{' '}
-            <Link to={isUserSignup ? '/login?mode=user' : '/login?mode=admin'} className="text-brand-600 font-bold hover:underline">
-              {isUserSignup ? 'Sign In as User' : 'Sign In as Admin'}
-            </Link>
-          </div>
-
-          <div className="pt-2 border-t border-gray-100">
-            {isUserSignup ? (
-              <button
-                type="button"
-                onClick={() => setRole('ADMIN')}
-                className="text-[11px] font-bold text-gray-600 hover:text-brand-600"
-              >
-                🛡️ Switch to Admin Registration
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setRole('MEMBER')}
-                className="text-[11px] font-bold text-gray-600 hover:text-brand-600"
-              >
-                👤 Switch to Member / User Registration
-              </button>
-            )}
-          </div>
+        <div className="mt-4 pt-4 border-t border-gray-100 text-center">
+          <Link 
+            to={isUserSignup ? '/login?mode=user' : '/login?mode=admin'} 
+            className="text-xs font-black text-brand-600 hover:text-brand-700 hover:underline transition-colors"
+          >
+            Already a Member? Login
+          </Link>
         </div>
       </motion.div>
     </div>

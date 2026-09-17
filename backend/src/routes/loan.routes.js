@@ -7,7 +7,9 @@ import {
   requestLoan,
   approveRequest,
   rejectRequest,
-  recordEMIPayment
+  recordEMIPayment,
+  addDirectHistoricalLoan,
+  addExtraInterestPenalty
 } from '../controllers/loan.controller.js';
 import { authenticateUser } from '../middleware/auth.middleware.js';
 import { requireAdmin } from '../middleware/role.middleware.js';
@@ -22,6 +24,8 @@ router.get('/requests', requireAdmin, getLoanRequests);
 router.get('/:id', getLoanById);
 
 router.post('/request', requestLoan);
+router.post('/direct-historical', requireAdmin, addDirectHistoricalLoan);
+router.post('/extra-interest', requireAdmin, addExtraInterestPenalty);
 router.post('/requests/:id/approve', requireAdmin, approveRequest);
 router.post('/requests/:id/reject', requireAdmin, rejectRequest);
 router.post('/installments/:id/pay', requireAdmin, recordEMIPayment);

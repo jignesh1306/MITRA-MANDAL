@@ -13,7 +13,8 @@ const notificationSchema = new mongoose.Schema({
       'EMI_OVERDUE', 
       'EMI_PAID', 
       'LOAN_COMPLETED', 
-      'GENERAL_ADMIN'
+      'GENERAL_ADMIN',
+      'SYSTEM'
     ], 
     required: true 
   },
@@ -23,5 +24,8 @@ const notificationSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// Auto-expire notifications after 2 days (172800 seconds = 48 hours)
+notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 172800 });
 
 export const Notification = mongoose.model('Notification', notificationSchema);

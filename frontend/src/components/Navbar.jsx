@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { Bell, LogOut, Calculator } from 'lucide-react';
 import api from '../services/api';
 
+import { registerAndSubscribePush } from '../services/pushNotification';
+
 export const Navbar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -12,6 +14,7 @@ export const Navbar = () => {
   useEffect(() => {
     if (user) {
       api.get('/notifications').then(res => setUnreadCount(res.data.unreadCount)).catch(() => {});
+      registerAndSubscribePush();
     }
   }, [user]);
 

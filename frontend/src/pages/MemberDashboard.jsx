@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { formatCurrency } from '../utils/formatters';
@@ -17,6 +17,7 @@ import {
 
 export const MemberDashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -32,23 +33,29 @@ export const MemberDashboard = () => {
   const totalGroupFund = data?.totalGroupFund || 0;
 
   return (
-    <div className="max-w-4xl mx-auto p-3 sm:p-6 space-y-3.5 sm:space-y-6 pb-24">
+    <div className="max-w-4xl mx-auto p-3 sm:p-6 space-y-3.5 sm:space-y-6 pb-4">
       {/* 1. Total Group Fund Banner */}
       <motion.div 
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-brand-700 via-indigo-700 to-purple-800 p-6 sm:p-8 text-white shadow-xl"
+        onClick={() => navigate('/member/reports')}
+        className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-brand-700 via-indigo-700 to-purple-800 p-6 sm:p-8 text-white shadow-xl cursor-pointer hover:shadow-2xl transition-all group"
       >
         <div className="absolute -right-8 -bottom-8 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-        <div className="absolute right-8 top-4 text-white/10">
+        <div className="absolute right-8 top-4 text-white/10 group-hover:text-white/20 transition-colors">
           <Sparkles className="w-20 h-20 animate-pulse" />
         </div>
 
         <div className="relative z-10 space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[11px] font-bold tracking-wide text-brand-100">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
-            <span>Community Group Capital</span>
+          <div className="flex items-center justify-between">
+            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[11px] font-bold tracking-wide text-brand-100">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
+              <span>Community Group Capital</span>
+            </div>
+            <span className="text-[10px] font-bold bg-white/15 px-2.5 py-1 rounded-full text-white/90 group-hover:bg-white/25 transition-all flex items-center gap-1">
+              View Report <ArrowUpRight className="w-3 h-3" />
+            </span>
           </div>
 
           <span className="text-xs font-semibold text-blue-100 uppercase tracking-wider block pt-1">

@@ -3,8 +3,10 @@ import { Group } from '../models/Group.js';
 import { GroupMember } from '../models/GroupMember.js';
 import { Contribution } from '../models/Contribution.js';
 import { Loan } from '../models/Loan.js';
+import { LoanRequest } from '../models/LoanRequest.js';
 import { LoanInstallment } from '../models/LoanInstallment.js';
 import { Transaction } from '../models/Transaction.js';
+import { EMISubmission } from '../models/EMISubmission.js';
 import { getFundSummary } from '../services/fund.service.js';
 
 export const getAdminSummary = async (req, res, next) => {
@@ -16,9 +18,9 @@ export const getAdminSummary = async (req, res, next) => {
     const group = await Group.findOne();
     const fundSummary = await getFundSummary(group?._id);
 
-    const totalMembers = await User.countDocuments();
-    const activeMembers = await User.countDocuments({ status: 'ACTIVE' });
-    const pendingMembersCount = await User.countDocuments({ status: 'PENDING' });
+    const totalMembers = await User.countDocuments({ role: 'MEMBER' });
+    const activeMembers = await User.countDocuments({ role: 'MEMBER', status: 'ACTIVE' });
+    const pendingMembersCount = await User.countDocuments({ role: 'MEMBER', status: 'PENDING' });
 
     const currentContribs = await Contribution.find({ month: currentMonth, year: currentYear });
     let paidThisMonth = 0;
@@ -73,6 +75,9 @@ export const getAdminSummary = async (req, res, next) => {
       });
     }
 
+    const pendingEMISubmissionsCount = await EMISubmission.countDocuments({ status: 'PENDING' });
+    const pendingLoanRequestsCount = await LoanRequest.countDocuments({ status: 'PENDING' });
+
     res.json({
       group,
       passwordResetCode: group?.passwordResetCode,
@@ -94,8 +99,10 @@ export const getAdminSummary = async (req, res, next) => {
       loans: {
         activeCount: activeLoans.length,
         totalOutstandingPrincipal,
-        overdueEMIsCount
+        overdueEMIsCount,
+        pendingRequestsCount: pendingLoanRequestsCount
       },
+      pendingEMISubmissionsCount,
       charts: {
         monthlyComparison: monthlyCharts
       }

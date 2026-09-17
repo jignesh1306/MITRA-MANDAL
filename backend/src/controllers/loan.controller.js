@@ -2,13 +2,17 @@ import { Loan } from '../models/Loan.js';
 import { LoanInstallment } from '../models/LoanInstallment.js';
 import { LoanRequest } from '../models/LoanRequest.js';
 import { Group } from '../models/Group.js';
+import { User } from '../models/User.js';
 import { 
   createLoanRequest, 
   approveLoanRequest, 
-  payInstallment 
+  payInstallment,
+  createPastCompletedLoan,
+  createPreExistingRunningLoan
 } from '../services/loan.service.js';
 import { getFundSummary } from '../services/fund.service.js';
 import { calculateLoanSchedule } from '../services/loanCalculator.service.js';
+import { createNotification } from '../services/notification.service.js';
 
 export const getLoans = async (req, res, next) => {
   try {
@@ -33,6 +37,8 @@ export const getMyLoans = async (req, res, next) => {
     const list = await Loan.find({ memberId: req.user._id })
       .populate('approvedBy', 'name')
       .sort({ createdAt: -1 });
+
+    const pendingRequests = await LoanRequest.find({ memberId: req.user._id, status: 'PENDING' }).sort({ createdAt: -1 });
 
     const enrichedLoans = await Promise.all(list.map(async (loanDoc) => {
       const loan = loanDoc.toObject();
@@ -72,7 +78,21 @@ export const getMyLoans = async (req, res, next) => {
       };
     }));
 
-    res.json(enrichedLoans);
+    // Format pending requests to match loan structures for UI
+    const pendingItems = pendingRequests.map(r => ({
+      _id: r._id,
+      principal: r.amount,
+      months: r.months,
+      interestRate: r.interestRate,
+      interestType: r.interestType,
+      purpose: r.purpose,
+      note: r.note,
+      status: 'PENDING',
+      requestDate: r.requestDate || r.createdAt,
+      createdAt: r.createdAt
+    }));
+
+    res.json([...pendingItems, ...enrichedLoans]);
   } catch (error) {
     next(error);
   }
@@ -130,8 +150,15 @@ export const getLoanById = async (req, res, next) => {
       }
     }
 
-    const remainingPrincipal = loan.principal - paidAmount;
-    const progressPercent = Math.round((paidAmount / loan.principal) * 100);
+    // Fallback for COMPLETED loans (e.g. historical completed loans without explicit installments)
+    if (loan.status === 'COMPLETED' && paidAmount === 0 && loan.principal > 0) {
+      paidAmount = loan.principal;
+      interestPaid = loan.totalInterest;
+    }
+
+    const remainingPrincipal = Math.max(0, loan.principal - paidAmount);
+    const remainingInterest = Math.max(0, loan.totalInterest - interestPaid);
+    const progressPercent = loan.principal > 0 ? Math.round((paidAmount / loan.principal) * 100) : 0;
 
     res.json({
       loan,
@@ -140,7 +167,7 @@ export const getLoanById = async (req, res, next) => {
         paidAmount,
         remainingPrincipal,
         interestPaid,
-        remainingInterest: loan.totalInterest - interestPaid,
+        remainingInterest,
         progressPercent
       }
     });
@@ -164,6 +191,19 @@ export const requestLoan = async (req, res, next) => {
       note
     });
 
+    // Notify all Admins in simple English
+    const admins = await User.find({ role: 'ADMIN' });
+    for (const admin of admins) {
+      await createNotification({
+        userId: admin._id,
+        groupId: group._id,
+        type: 'SYSTEM',
+        title: 'Loan Request',
+        message: `${req.user.name} asked for a loan of ₹${(amount / 100).toLocaleString('en-IN')} for ${months} months.`,
+        type: 'SYSTEM'
+      });
+    }
+
     res.status(201).json(result);
   } catch (error) {
     next(error);
@@ -173,8 +213,8 @@ export const requestLoan = async (req, res, next) => {
 export const approveRequest = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { override } = req.body;
-    const result = await approveLoanRequest(id, req.user._id, !!override);
+    const { override, transferProofUrl } = req.body;
+    const result = await approveLoanRequest(id, req.user._id, !!override, transferProofUrl || '');
     res.json(result);
   } catch (error) {
     next(error);
@@ -194,11 +234,107 @@ export const rejectRequest = async (req, res, next) => {
     request.rejectionReason = rejectionReason || 'Rejected by Admin.';
     await request.save();
 
+    // Notify member in simple English
+    await createNotification({
+      userId: request.memberId,
+      groupId: request.groupId,
+      type: 'LOAN_REJECTED',
+      title: 'Loan Rejected',
+      message: `Your loan request of ₹${(request.amount / 100).toLocaleString('en-IN')} was rejected. Reason: ${request.rejectionReason}`
+    });
+
     res.json(request);
   } catch (error) {
     next(error);
   }
 };
+
+export const addDirectHistoricalLoan = async (req, res, next) => {
+  try {
+    const { memberId, type, amount, months, interestRate, interestType, startDate, note } = req.body;
+    const group = await Group.findOne();
+    if (!group) return res.status(404).json({ message: 'Group not found.' });
+    if (!memberId || !type || !amount || !months) {
+      return res.status(400).json({ message: 'Member, Loan Type, Amount, and Months are required.' });
+    }
+
+    const amountInPaise = Math.round(Number(amount) * 100);
+    const monthsNum = Number(months);
+    const rateNum = Number(interestRate || group.defaultInterestRate);
+    const typeStr = interestType || group.interestType;
+    const startDateObj = startDate ? new Date(startDate) : new Date();
+
+    let loan;
+    if (type === 'COMPLETED') {
+      loan = await createPastCompletedLoan({
+        groupId: group._id,
+        memberId,
+        amount: amountInPaise,
+        months: monthsNum,
+        interestRate: rateNum,
+        interestType: typeStr,
+        startDate: startDateObj,
+        note: note || 'Direct Past Historical Loan Added by Admin',
+        adminUserId: req.user._id
+      });
+    } else if (type === 'RUNNING') {
+      loan = await createPreExistingRunningLoan({
+        groupId: group._id,
+        memberId,
+        amount: amountInPaise,
+        months: monthsNum,
+        interestRate: rateNum,
+        interestType: typeStr,
+        startDate: startDateObj,
+        note: note || 'Direct Pre-Existing Running Loan Added by Admin',
+        adminUserId: req.user._id
+      });
+    } else {
+      return res.status(400).json({ message: 'Invalid loan type. Use COMPLETED or RUNNING.' });
+    }
+
+    res.status(201).json({ message: 'Loan successfully added!', loan });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const addExtraInterestPenalty = async (req, res, next) => {
+  try {
+    const { memberId, amount, description, loanId } = req.body;
+    const group = await Group.findOne();
+    if (!group) return res.status(404).json({ message: 'Group not found.' });
+    if (!memberId || !amount) {
+      return res.status(400).json({ message: 'Member and Extra Interest / Penalty Amount are required.' });
+    }
+
+    const amountInPaise = Math.round(Number(amount) * 100);
+    const member = await User.findById(memberId);
+    if (!member) return res.status(404).json({ message: 'Member not found.' });
+
+    const refId = await generateRefId('FINE');
+    const transaction = await Transaction.create({
+      referenceId: refId,
+      groupId: group._id,
+      type: 'INCOME',
+      category: 'FINE',
+      amount: amountInPaise,
+      memberId,
+      loanId: loanId || undefined,
+      description: description || `Extra Interest / Penalty from ${member.name} (${refId})`,
+      date: new Date(),
+      createdBy: req.user._id
+    });
+
+    res.status(201).json({ 
+      message: `₹${Number(amount).toLocaleString('en-IN')} Extra Interest / Penalty successfully added to total treasury balance!`, 
+      transaction 
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 
 export const recordEMIPayment = async (req, res, next) => {
   try {
@@ -209,3 +345,5 @@ export const recordEMIPayment = async (req, res, next) => {
     next(error);
   }
 };
+
+

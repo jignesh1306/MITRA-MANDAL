@@ -24,7 +24,7 @@ export const Login = () => {
     setError('');
     setLoading(true);
     try {
-      const res = await login(phone, password);
+      const res = await login(phone, password, mode);
       if (res.user.role === 'ADMIN') {
         navigate('/admin');
       } else {
@@ -42,7 +42,7 @@ export const Login = () => {
   return (
     <div className="min-h-[85vh] flex flex-col items-center justify-center p-4">
       <div className="max-w-md w-full mb-3 flex items-center justify-between">
-        <BackButton fallback="/" label="Back to Home" />
+        <BackButton to="/" label="Back to Home" />
       </div>
 
       <motion.div 
@@ -166,33 +166,13 @@ export const Login = () => {
           </button>
         </form>
 
-        <div className="mt-6 text-center text-xs text-gray-500 space-y-2">
-          <div>
-            Don't have an account?{' '}
-            <Link to={isUserMode ? '/signup?mode=user' : '/signup?mode=admin'} className="text-brand-600 font-bold hover:underline">
-              {isUserMode ? 'Sign Up as User' : 'Sign Up as Admin'}
-            </Link>
-          </div>
-
-          <div className="pt-2 border-t border-gray-100">
-            {isUserMode ? (
-              <button
-                type="button"
-                onClick={() => setMode('ADMIN')}
-                className="text-[11px] font-bold text-gray-600 hover:text-brand-600"
-              >
-                🔒 Are you an Admin? Switch to Admin Sign In
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setMode('USER')}
-                className="text-[11px] font-bold text-gray-600 hover:text-brand-600"
-              >
-                👤 Switch to Member / User Sign In
-              </button>
-            )}
-          </div>
+        <div className="mt-4 pt-4 border-t border-gray-100 text-center">
+          <Link 
+            to={isUserMode ? '/signup?mode=user' : '/signup?mode=admin'} 
+            className="text-xs font-black text-brand-600 hover:text-brand-700 hover:underline transition-colors"
+          >
+            Register as New User
+          </Link>
         </div>
       </motion.div>
     </div>

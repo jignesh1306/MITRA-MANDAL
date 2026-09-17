@@ -13,6 +13,26 @@ export const getSettings = async (req, res, next) => {
   }
 };
 
+export const getPublicStats = async (req, res, next) => {
+  try {
+    let group = await Group.findOne();
+    if (!group) {
+      group = await Group.create({ name: 'Mitra-Mandal' });
+    }
+    const { User } = await import('../models/User.js');
+    const activeMembersCount = await User.countDocuments({ role: 'MEMBER', status: 'ACTIVE' });
+
+    res.json({
+      activeMembers: activeMembersCount,
+      monthlyContribution: group.monthlyContribution,
+      defaultInterestRate: group.defaultInterestRate,
+      name: group.name
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const updateSettings = async (req, res, next) => {
   try {
     let group = await Group.findOne();

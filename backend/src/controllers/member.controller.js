@@ -8,11 +8,13 @@ import bcrypt from 'bcryptjs';
 import { generateRefId } from '../services/refId.service.js';
 
 import { LoanInstallment } from '../models/LoanInstallment.js';
+import { createPastCompletedLoan, createPreExistingRunningLoan } from '../services/loan.service.js';
+import { markContributionPaid } from '../services/contribution.service.js';
 
 export const getMembers = async (req, res, next) => {
   try {
     const { search, status } = req.query;
-    const query = {};
+    const query = { role: 'MEMBER' };
     if (status) query.status = status;
     if (search) {
       query.$or = [
@@ -176,7 +178,7 @@ export const createMember = async (req, res, next) => {
 
 
 
-export const generateMemberContributionsFromJoining = async (user, groupId, monthlyAmount) => {
+export const generateMemberContributionsFromJoining = async (user, groupId, monthlyAmount, markPaid = false, adminUserId = null) => {
   const joinDate = user.joiningDate ? new Date(user.joiningDate) : new Date(user.createdAt);
   const startDate = new Date(joinDate.getFullYear(), joinDate.getMonth(), 1);
   const now = new Date();
@@ -188,7 +190,7 @@ export const generateMemberContributionsFromJoining = async (user, groupId, mont
     const y = curIter.getFullYear();
 
     try {
-      await Contribution.create({
+      const contrib = await Contribution.create({
         groupId,
         memberId: user._id,
         month: m,
@@ -196,6 +198,10 @@ export const generateMemberContributionsFromJoining = async (user, groupId, mont
         amount: monthlyAmount || 200000,
         status: 'PENDING'
       });
+
+      if (markPaid && adminUserId) {
+        await markContributionPaid(contrib._id, adminUserId);
+      }
     } catch (err) {
       if (err.code !== 11000) throw err;
     }
@@ -211,7 +217,18 @@ export const updateMember = async (req, res, next) => {
       return res.status(403).json({ message: 'Access denied.' });
     }
 
-    const { name, phone, status, role, joiningDate, monthlyContribution } = req.body;
+    const { 
+      name, 
+      phone, 
+      status, 
+      role, 
+      joiningDate, 
+      monthlyContribution, 
+      markPastContributionsPaid, 
+      pastLoans, 
+      runningLoan 
+    } = req.body;
+
     const user = await User.findById(targetUserId);
     if (!user) return res.status(404).json({ message: 'Member not found.' });
 
@@ -233,7 +250,41 @@ export const updateMember = async (req, res, next) => {
       const group = await Group.findOne();
       if (group) {
         const amount = monthlyContribution ? Math.round(Number(monthlyContribution) * 100) : group.monthlyContribution;
-        await generateMemberContributionsFromJoining(user, group._id, amount);
+        await generateMemberContributionsFromJoining(user, group._id, amount, !!markPastContributionsPaid, req.user._id);
+
+        // Process Past Completed Loans array if provided
+        if (Array.isArray(pastLoans) && pastLoans.length > 0) {
+          for (const pl of pastLoans) {
+            if (pl.amount && pl.months) {
+              await createPastCompletedLoan({
+                groupId: group._id,
+                memberId: user._id,
+                amount: Math.round(Number(pl.amount) * 100),
+                months: Number(pl.months),
+                interestRate: Number(pl.interestRate || group.defaultInterestRate),
+                interestType: pl.interestType || group.interestType,
+                startDate: pl.startDate ? new Date(pl.startDate) : new Date(),
+                note: pl.note || 'Historical Completed Loan',
+                adminUserId: req.user._id
+              });
+            }
+          }
+        }
+
+        // Process Current Pre-Existing Running Loan if provided
+        if (runningLoan && runningLoan.amount && runningLoan.months) {
+          await createPreExistingRunningLoan({
+            groupId: group._id,
+            memberId: user._id,
+            amount: Math.round(Number(runningLoan.amount) * 100),
+            months: Number(runningLoan.months),
+            interestRate: Number(runningLoan.interestRate || group.defaultInterestRate),
+            interestType: runningLoan.interestType || group.interestType,
+            startDate: runningLoan.startDate ? new Date(runningLoan.startDate) : new Date(),
+            note: runningLoan.note || 'Historical Pre-Existing Running Loan',
+            adminUserId: req.user._id
+          });
+        }
       }
     }
 

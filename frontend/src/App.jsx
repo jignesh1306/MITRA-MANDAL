@@ -38,9 +38,32 @@ import { AuditLogsPage } from './pages/AuditLogsPage';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
-  if (loading) return <div className="p-8 text-center text-xs text-gray-500">Loading...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-4">
+        <div className="w-10 h-10 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin mb-3"></div>
+        <div className="text-xs font-semibold text-gray-500 font-gujarati">લોડ થઈ રહ્યું છે...</div>
+      </div>
+    );
+  }
   if (!user) return <Navigate to="/login" replace />;
   if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return <Navigate to={user.role === 'ADMIN' ? '/admin' : '/member'} replace />;
+  }
+  return children;
+};
+
+const PublicOnlyRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-4">
+        <div className="w-10 h-10 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin mb-3"></div>
+        <div className="text-xs font-semibold text-gray-500 font-gujarati">લોડ થઈ રહ્યું છે...</div>
+      </div>
+    );
+  }
+  if (user) {
     return <Navigate to={user.role === 'ADMIN' ? '/admin' : '/member'} replace />;
   }
   return children;
@@ -69,11 +92,27 @@ export default function App() {
         <AppLayout>
           <Routes>
             {/* Public Routes */}
-            <Route path="/" element={<Home />} />
+            <Route path="/" element={
+              <PublicOnlyRoute>
+                <Home />
+              </PublicOnlyRoute>
+            } />
             <Route path="/calculator" element={<EMICalculatorPage />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/login" element={
+              <PublicOnlyRoute>
+                <Login />
+              </PublicOnlyRoute>
+            } />
+            <Route path="/signup" element={
+              <PublicOnlyRoute>
+                <Signup />
+              </PublicOnlyRoute>
+            } />
+            <Route path="/forgot-password" element={
+              <PublicOnlyRoute>
+                <ForgotPassword />
+              </PublicOnlyRoute>
+            } />
 
             {/* Member Routes */}
             <Route path="/member" element={
@@ -126,11 +165,21 @@ export default function App() {
                 <SubmitEMIPage />
               </ProtectedRoute>
             } />
+            <Route path="/member/reports" element={
+              <ProtectedRoute allowedRoles={['MEMBER', 'ADMIN']}>
+                <ReportsPage />
+              </ProtectedRoute>
+            } />
 
             {/* Admin Routes */}
             <Route path="/admin" element={
               <ProtectedRoute allowedRoles={['ADMIN']}>
                 <AdminDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/notifications" element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <NotificationsPage />
               </ProtectedRoute>
             } />
             <Route path="/admin/emi-submissions" element={

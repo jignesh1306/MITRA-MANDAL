@@ -17,7 +17,7 @@ export const MemberProfile = () => {
   if (!user) return null;
 
   return (
-    <div className="max-w-md mx-auto p-4 sm:p-6 space-y-5 pb-24">
+    <div className="max-w-md mx-auto p-4 sm:p-6 space-y-5 pb-4">
       {/* Compact Minimalist Profile Card */}
       <motion.div 
         initial={{ opacity: 0, y: 15 }}

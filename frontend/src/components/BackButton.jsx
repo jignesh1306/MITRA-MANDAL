@@ -2,10 +2,17 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 
-export const BackButton = ({ fallback = '/', label = 'Back', className = '' }) => {
+export const BackButton = ({ to, fallback = '/', label = 'Back', className = '' }) => {
   const navigate = useNavigate();
 
   const handleBack = () => {
+    // If 'to' is explicitly passed or label mentions 'Home', navigate directly to that route
+    if (to) {
+      return navigate(to);
+    }
+    if (label.toLowerCase().includes('home')) {
+      return navigate('/');
+    }
     if (window.history.length > 2) {
       navigate(-1);
     } else {

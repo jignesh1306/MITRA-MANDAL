@@ -14,28 +14,44 @@ export const getFundReport = async (groupId, startDate, endDate) => {
   }
 
   const transactions = await Transaction.find(query).sort({ date: 1 });
+  const loans = await Loan.find(groupId ? { groupId } : {});
+  
+  let totalIncome = 0;
+  let totalExpenses = 0;
+  let totalRegularEmi = 0;
+  let totalLoanEmiPrincipal = 0;
+  let totalInterest = 0;
+  let totalExtraInterestPenalty = 0;
 
-  let income = 0;
-  let expenses = 0;
-  const items = transactions.map(t => {
-    if (t.type === 'INCOME') income += t.amount;
-    if (t.type === 'EXPENSE') expenses += t.amount;
-    return {
-      id: t._id,
-      referenceId: t.referenceId,
-      date: t.date,
-      type: t.type,
-      category: t.category,
-      amount: t.amount,
-      description: t.description
-    };
-  });
+  for (const t of transactions) {
+    if (t.type === 'INCOME') {
+      totalIncome += t.amount;
+      if (t.category === 'MEMBER_CONTRIBUTION' || t.category === 'CONTRIBUTION') totalRegularEmi += t.amount;
+      if (t.category === 'LOAN_REPAYMENT_PRINCIPAL' || t.category === 'LOAN_REPAYMENT') totalLoanEmiPrincipal += t.amount;
+      if (t.category === 'LOAN_INTEREST') totalInterest += t.amount;
+      if (t.category === 'FINE') totalExtraInterestPenalty += t.amount;
+    } else if (t.type === 'EXPENSE') {
+      totalExpenses += t.amount;
+    }
+  }
+
+  const activeLoansList = loans.filter(l => l.status === 'ACTIVE');
+  const runningLoansCount = activeLoansList.length;
+  const runningLoanAmount = activeLoansList.reduce((acc, l) => acc + l.principal, 0);
+
+  const currentBalance = totalIncome - totalExpenses;
+  const totalBankBalance = currentBalance; // Total current amount in bank
 
   return {
-    totalIncome: income,
-    totalExpenses: expenses,
-    netBalance: income - expenses,
-    transactions: items
+    totalCurrentBalance: currentBalance,
+    runningLoansCount,
+    runningLoanAmount,
+    totalRegularEmi,
+    totalLoanEmi: totalLoanEmiPrincipal,
+    totalInterest,
+    totalExtraInterestPenalty,
+    totalBankBalance,
+    transactions
   };
 };
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { formatCurrency } from '../utils/formatters';
-import { PlusCircle, Calculator, AlertCircle } from 'lucide-react';
+import { PlusCircle, Calculator, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { BackButton } from '../components/BackButton';
 
 export const LoanRequestPage = () => {
@@ -13,6 +13,7 @@ export const LoanRequestPage = () => {
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
 
   const navigate = useNavigate();
 
@@ -75,7 +76,7 @@ export const LoanRequestPage = () => {
         purpose: 'Loan Request',
         note
       });
-      navigate('/member/loans');
+      setSuccess(true);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -99,6 +100,39 @@ export const LoanRequestPage = () => {
         </div>
       </div>
 
+      {success && (
+        <div className="p-6 rounded-3xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-600 text-white rounded-xl">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold">Loan Request Submitted Successfully!</h3>
+              <p className="text-xs text-emerald-700">Your loan application of <strong>{formatCurrency(targetAmount)}</strong> for <strong>{targetMonths} months</strong> has been forwarded to Admin for approval.</p>
+            </div>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                setSuccess(false);
+                setNote('');
+              }}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
+            >
+              Submit Another Request
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/member/loans')}
+              className="px-4 py-2 bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold rounded-xl transition-all cursor-pointer"
+            >
+              Go to My Loans Dashboard
+            </button>
+          </div>
+        </div>
+      )}
+
       {error && (
         <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
           <AlertCircle className="w-5 h-5 shrink-0" />
@@ -106,87 +140,89 @@ export const LoanRequestPage = () => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-5 bg-white p-6 rounded-3xl border border-gray-200 shadow-xs">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">
-              Loan Amount (in ₹): {formatCurrency(targetAmount, true)}
-            </label>
-            <input
-              type="number"
-              min="5000"
-              max="1000000"
-              step="1000"
-              required
-              value={amountInput}
-              onChange={handleAmountChange}
-              onBlur={handleAmountBlur}
-              placeholder="50000"
-              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:bg-white focus:border-brand-600 outline-hidden transition-all"
-            />
-          </div>
+      {!success && (
+        <form onSubmit={handleSubmit} className="space-y-5 bg-white p-6 rounded-3xl border border-gray-200 shadow-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Loan Amount (in ₹): {formatCurrency(targetAmount, true)}
+              </label>
+              <input
+                type="number"
+                min="5000"
+                max="1000000"
+                step="1000"
+                required
+                value={amountInput}
+                onChange={handleAmountChange}
+                onBlur={handleAmountBlur}
+                placeholder="50000"
+                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:bg-white focus:border-brand-600 outline-hidden transition-all"
+              />
+            </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">
-              Duration (Months): {targetMonths} months
-            </label>
-            <input
-              type="number"
-              min="1"
-              max="36"
-              required
-              value={monthsInput}
-              onChange={handleMonthsChange}
-              onBlur={handleMonthsBlur}
-              placeholder="10"
-              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:bg-white focus:border-brand-600 outline-hidden transition-all"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">Additional Note (Optional)</label>
-          <textarea
-            rows="2"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Add any additional notes for admin review..."
-            className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:border-brand-600 outline-hidden transition-all"
-          />
-        </div>
-
-        {/* Calculation Preview */}
-        {preview && (
-          <div className="p-4 bg-brand-50/50 rounded-2xl border border-brand-100 space-y-2">
-            <h4 className="text-xs font-bold text-brand-900 flex items-center gap-1.5">
-              <Calculator className="w-4 h-4 text-brand-600" />
-              Calculated Preview
-            </h4>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-              <div>
-                <span className="text-gray-500">Interest Rate:</span> <span className="font-bold">{preview.interestRate}%</span>
-              </div>
-              <div>
-                <span className="text-gray-500">Total Interest:</span> <span className="font-bold text-amber-600">{formatCurrency(preview.totalInterest)}</span>
-              </div>
-              <div>
-                <span className="text-gray-500">Total Repayment:</span> <span className="font-bold text-brand-700">{formatCurrency(preview.totalRepayment)}</span>
-              </div>
-              <div>
-                <span className="text-gray-500">Average EMI:</span> <span className="font-bold text-emerald-600">{formatCurrency(preview.averageEMI)}</span>
-              </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Duration (Months): {targetMonths} months
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="36"
+                required
+                value={monthsInput}
+                onChange={handleMonthsChange}
+                onBlur={handleMonthsBlur}
+                placeholder="10"
+                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:bg-white focus:border-brand-600 outline-hidden transition-all"
+              />
             </div>
           </div>
-        )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-3.5 text-xs font-bold text-white bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-700 hover:to-indigo-700 rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
-        >
-          {loading ? 'Submitting Request...' : 'Submit Loan Request'}
-        </button>
-      </form>
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Additional Note (Optional)</label>
+            <textarea
+              rows="2"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Add any additional notes for admin review..."
+              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:border-brand-600 outline-hidden transition-all"
+            />
+          </div>
+
+          {/* Calculation Preview */}
+          {preview && (
+            <div className="p-4 bg-brand-50/50 rounded-2xl border border-brand-100 space-y-2">
+              <h4 className="text-xs font-bold text-brand-900 flex items-center gap-1.5">
+                <Calculator className="w-4 h-4 text-brand-600" />
+                Calculated Preview
+              </h4>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                <div>
+                  <span className="text-gray-500">Interest Rate:</span> <span className="font-bold">{preview.interestRate}%</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Total Interest:</span> <span className="font-bold text-amber-600">{formatCurrency(preview.totalInterest)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Total Repayment:</span> <span className="font-bold text-brand-700">{formatCurrency(preview.totalRepayment)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Average EMI:</span> <span className="font-bold text-emerald-600">{formatCurrency(preview.averageEMI)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3.5 text-xs font-bold text-white bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-700 hover:to-indigo-700 rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+          >
+            {loading ? 'Submitting Request...' : 'Submit Loan Request'}
+          </button>
+        </form>
+      )}
     </div>
   );
 };

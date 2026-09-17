@@ -10,11 +10,14 @@ import { requireAdmin } from '../middleware/role.middleware.js';
 
 const router = express.Router();
 
-router.use(authenticateUser, requireAdmin);
+router.use(authenticateUser);
 
+// Group Fund Report is visible to all authenticated users (Members and Admins)
 router.get('/fund', generateFundReport);
-router.get('/contributions', generateContributionReport);
-router.get('/loans', generateLoanReport);
-router.get('/expenses', generateExpenseReport);
+
+// Detailed admin reports
+router.get('/contributions', requireAdmin, generateContributionReport);
+router.get('/loans', requireAdmin, generateLoanReport);
+router.get('/expenses', requireAdmin, generateExpenseReport);
 
 export default router;

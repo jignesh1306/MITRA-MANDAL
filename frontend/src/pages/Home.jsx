@@ -1,9 +1,22 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Shield, Wallet, BadgeIndianRupee, PieChart, CheckCircle, Calculator, Sparkles, ArrowRight } from 'lucide-react';
+import api from '../services/api';
 
 export const Home = () => {
+  const [stats, setStats] = useState({
+    activeMembers: 0,
+    monthlyContribution: 200000,
+    defaultInterestRate: 1.0
+  });
+
+  useEffect(() => {
+    api.get('/settings/public-stats')
+      .then(res => setStats(res.data))
+      .catch(() => {});
+  }, []);
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { 
@@ -171,17 +184,17 @@ export const Home = () => {
         >
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 text-center">
             <motion.div whileHover={{ scale: 1.04 }} className="p-4 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-2xl shadow-sm">
-              <div className="text-2xl sm:text-3xl font-black">15</div>
+              <div className="text-2xl sm:text-3xl font-black">{stats.activeMembers || 0}</div>
               <div className="text-[11px] font-semibold opacity-90 mt-0.5 font-gujarati">કુલ સભ્યો (Members)</div>
             </motion.div>
 
             <motion.div whileHover={{ scale: 1.04 }} className="p-4 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-2xl shadow-sm">
-              <div className="text-2xl sm:text-3xl font-black">₹2,000</div>
+              <div className="text-2xl sm:text-3xl font-black">₹{(stats.monthlyContribution / 100).toLocaleString('en-IN')}</div>
               <div className="text-[11px] font-semibold opacity-90 mt-0.5 font-gujarati">માસિક ફાળો (Monthly Fund)</div>
             </motion.div>
 
             <motion.div whileHover={{ scale: 1.04 }} className="p-4 bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-2xl shadow-sm">
-              <div className="text-2xl sm:text-3xl font-black">1%</div>
+              <div className="text-2xl sm:text-3xl font-black">{stats.defaultInterestRate}%</div>
               <div className="text-[11px] font-semibold opacity-90 mt-0.5 font-gujarati">વ્યાજ દર (Interest Rate)</div>
             </motion.div>
 

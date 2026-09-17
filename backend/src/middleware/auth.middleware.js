@@ -27,3 +27,5 @@ export const authenticateUser = async (req, res, next) => {
     return res.status(401).json({ message: 'Invalid or expired session. Please log in again.' });
   }
 };
+
+export const protect = authenticateUser;

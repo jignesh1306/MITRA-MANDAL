@@ -40,11 +40,12 @@ export const MyLoans = () => {
 
   if (loading) return <div className="p-6 max-w-4xl mx-auto"><LoadingSkeleton count={4} /></div>;
 
+  const pendingLoans = loans.filter(l => l.status === 'PENDING');
   const runningLoans = loans.filter(l => l.status === 'ACTIVE' || l.status === 'APPROVED');
   const pastLoans = loans.filter(l => l.status === 'COMPLETED' || l.status === 'REJECTED' || l.status === 'CANCELLED');
 
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6 pb-24">
+    <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6 pb-4">
       {/* Header & Apply Button */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
@@ -72,6 +73,38 @@ export const MyLoans = () => {
           </Link>
         </div>
       </div>
+
+      {/* Pending Loan Requests Section */}
+      {pendingLoans.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-extrabold text-amber-700 uppercase tracking-wider flex items-center gap-2">
+            <Clock className="w-4 h-4 text-amber-600 animate-pulse" />
+            Pending Admin Approval ({pendingLoans.length})
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {pendingLoans.map((item) => (
+              <div key={item._id} className="p-4 bg-amber-50/60 rounded-2xl border border-amber-200 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-base font-extrabold text-gray-900">{formatCurrency(item.principal)}</span>
+                  <StatusBadge status="PENDING" />
+                </div>
+                <div className="text-xs text-gray-600 flex justify-between">
+                  <span>Tenure: <strong>{item.months} Months</strong></span>
+                  <span>Rate: <strong>{item.interestRate}% Monthly</strong></span>
+                </div>
+                {item.note && (
+                  <p className="text-xs text-gray-500 italic bg-white/70 p-2 rounded-lg border border-amber-100">
+                    "{item.note}"
+                  </p>
+                )}
+                <p className="text-[11px] text-amber-700 font-medium">
+                  Submitted on {formatDate(item.createdAt || item.requestDate)} • Awaiting Admin Review
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Running Loans Section */}
       {runningLoans.length > 0 ? (

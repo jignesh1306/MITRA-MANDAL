@@ -73,13 +73,13 @@ export const createSubmission = async (req, res, next) => {
       status: 'PENDING'
     });
 
-    // Notify Admins
+    // Notify Admins in simple English
     const admins = await User.find({ role: 'ADMIN' });
     for (const admin of admins) {
       await createNotification({
         userId: admin._id,
-        title: 'New EMI Payment Submission',
-        message: `${req.user.name} submitted a new EMI payment proof of ₹${(totalAmountPaise / 100).toLocaleString('en-IN')} for review.`,
+        title: 'EMI Submission',
+        message: `${req.user.name} sent payment proof of ₹${(totalAmountPaise / 100).toLocaleString('en-IN')} for check.`,
         type: 'SYSTEM'
       });
     }
@@ -164,7 +164,8 @@ export const approveSubmission = async (req, res, next) => {
         amount: submission.regularAmount,
         description: `Monthly Fund Contribution for ${submission.month}/${submission.year}`,
         date: new Date(),
-        referenceId: refId
+        referenceId: refId,
+        createdBy: req.user._id
       });
     }
 
@@ -202,7 +203,8 @@ export const approveSubmission = async (req, res, next) => {
           amount: (pRem || 0) + (iRem || 0) || (submission.loanPrincipalAmount + submission.loanInterestAmount),
           description: `Loan Repayment (Principal: ₹${(submission.loanPrincipalAmount/100).toLocaleString('en-IN')}, Interest: ₹${(submission.loanInterestAmount/100).toLocaleString('en-IN')})`,
           date: new Date(),
-          referenceId: refIdLoan
+          referenceId: refIdLoan,
+          createdBy: req.user._id
         });
 
         // Check if all installments paid
@@ -220,11 +222,11 @@ export const approveSubmission = async (req, res, next) => {
     submission.reviewedAt = new Date();
     await submission.save();
 
-    // 4. Notify member
+    // 4. Notify member in simple English
     await createNotification({
       userId: submission.memberId,
-      title: 'EMI Payment Approved',
-      message: `Your EMI payment submission of ₹${(submission.totalAmount / 100).toLocaleString('en-IN')} for ${submission.month}/${submission.year} has been approved by Admin.`,
+      title: 'EMI Approved',
+      message: `Your EMI payment of ₹${(submission.totalAmount / 100).toLocaleString('en-IN')} was approved by Admin.`,
       type: 'SYSTEM'
     });
 
@@ -257,16 +259,16 @@ export const rejectSubmission = async (req, res, next) => {
     }
 
     submission.status = 'REJECTED';
-    submission.rejectionReason = reason || 'Payment screenshot invalid or payment not received.';
+    submission.rejectionReason = reason || 'Payment proof was not clear.';
     submission.reviewedBy = req.user._id;
     submission.reviewedAt = new Date();
     await submission.save();
 
-    // Notify member
+    // Notify member in simple English
     await createNotification({
       userId: submission.memberId,
-      title: 'EMI Payment Rejected',
-      message: `Your EMI payment submission of ₹${(submission.totalAmount / 100).toLocaleString('en-IN')} was rejected by Admin. Reason: ${submission.rejectionReason}`,
+      title: 'EMI Rejected',
+      message: `Your EMI payment of ₹${(submission.totalAmount / 100).toLocaleString('en-IN')} was rejected. Reason: ${submission.rejectionReason}`,
       type: 'SYSTEM'
     });
 

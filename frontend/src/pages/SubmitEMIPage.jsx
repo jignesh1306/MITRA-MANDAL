@@ -153,7 +153,7 @@ export const SubmitEMIPage = () => {
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6 pb-24">
+    <div className="max-w-3xl mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6 pb-4">
       <BackButton fallback="/member" label="Back to Dashboard" />
 
       {/* Header */}

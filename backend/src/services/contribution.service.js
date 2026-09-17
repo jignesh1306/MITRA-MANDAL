@@ -9,10 +9,11 @@ export const generateMonthlyContributions = async (groupId, month, year) => {
   const group = await Group.findById(groupId);
   if (!group) throw new Error('Group not found');
 
-  const members = await GroupMember.find({ groupId, status: 'ACTIVE' });
+  const members = await GroupMember.find({ groupId, status: 'ACTIVE' }).populate('userId', 'role');
   const created = [];
 
   for (const m of members) {
+    if (m.userId && m.userId.role === 'ADMIN') continue; // Do not generate contributions for ADMIN users
     try {
       const contrib = await Contribution.create({
         groupId,

@@ -24,6 +24,7 @@ export const Sidebar = () => {
 
   const adminNav = [
     { to: '/admin', label: 'Dashboard', icon: Home, end: true },
+    { to: '/admin/notifications', label: 'Notifications', icon: Bell },
     { to: '/admin/emi-submissions', label: 'EMI Submissions', icon: Wallet },
     { to: '/admin/members', label: 'Members', icon: Users },
     { to: '/admin/contributions', label: 'Contributions', icon: Wallet },
