@@ -10,6 +10,7 @@ import { generateRefId } from '../services/refId.service.js';
 import { LoanInstallment } from '../models/LoanInstallment.js';
 import { createPastCompletedLoan, createPreExistingRunningLoan } from '../services/loan.service.js';
 import { markContributionPaid } from '../services/contribution.service.js';
+import { getFundSummary } from '../services/fund.service.js';
 
 export const getMembers = async (req, res, next) => {
   try {
