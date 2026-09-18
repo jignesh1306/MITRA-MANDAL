@@ -339,7 +339,8 @@ export const addExtraInterestPenalty = async (req, res, next) => {
 export const recordEMIPayment = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const result = await payInstallment(id, req.user._id);
+    const { componentType } = req.body;
+    const result = await payInstallment(id, req.user._id, componentType || 'FULL');
     res.json(result);
   } catch (error) {
     next(error);

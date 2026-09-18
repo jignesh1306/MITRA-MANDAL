@@ -135,55 +135,78 @@ export const approveLoanRequest = async (requestId, adminUserId, overrideInsuffi
   return { loan, installments, transaction };
 };
 
-export const payInstallment = async (installmentId, adminUserId) => {
+export const payInstallment = async (installmentId, adminUserId, componentType = 'FULL') => {
   const inst = await LoanInstallment.findById(installmentId).populate({
     path: 'loanId',
     populate: { path: 'memberId', select: 'name email' }
   });
   if (!inst) throw new Error('Installment not found');
-  if (inst.status === 'PAID') throw new Error('EMI is already paid');
+  if (inst.status === 'PAID') throw new Error('EMI is already fully paid');
 
   const loan = inst.loanId;
   const member = loan.memberId;
 
-  // Split Accounting Transactions
-  const principalRef = await generateRefId('EMI-P');
-  const interestRef = await generateRefId('EMI-I');
+  const principalToPay = (componentType === 'FULL' || componentType === 'PRINCIPAL')
+    ? Math.max(0, inst.principal - (inst.paidPrincipal || 0))
+    : 0;
 
-  const principalTx = await Transaction.create({
-    referenceId: principalRef,
-    groupId: loan.groupId,
-    type: 'INCOME',
-    category: 'LOAN_REPAYMENT_PRINCIPAL',
-    amount: inst.principal,
-    memberId: member._id || member,
-    loanId: loan._id,
-    description: `EMI #${inst.installmentNumber} Principal Repayment - ${member.name}`,
-    date: new Date(),
-    createdBy: adminUserId
-  });
+  const interestToPay = (componentType === 'FULL' || componentType === 'INTEREST')
+    ? Math.max(0, inst.interest - (inst.paidInterest || 0))
+    : 0;
 
-  const interestTx = await Transaction.create({
-    referenceId: interestRef,
-    groupId: loan.groupId,
-    type: 'INCOME',
-    category: 'LOAN_INTEREST',
-    amount: inst.interest,
-    memberId: member._id || member,
-    loanId: loan._id,
-    description: `EMI #${inst.installmentNumber} Interest Income - ${member.name}`,
-    date: new Date(),
-    createdBy: adminUserId
-  });
+  if (principalToPay === 0 && interestToPay === 0) {
+    throw new Error('Selected component for this installment is already paid.');
+  }
 
-  inst.status = 'PAID';
-  inst.paidAmount = inst.emi;
-  inst.paidAt = new Date();
+  let principalTx = null;
+  let interestTx = null;
+
+  if (principalToPay > 0) {
+    const principalRef = await generateRefId('EMI-P');
+    principalTx = await Transaction.create({
+      referenceId: principalRef,
+      groupId: loan.groupId,
+      type: 'INCOME',
+      category: 'LOAN_REPAYMENT_PRINCIPAL',
+      amount: principalToPay,
+      memberId: member._id || member,
+      loanId: loan._id,
+      description: `EMI #${inst.installmentNumber} Principal Repayment - ${member.name}`,
+      date: new Date(),
+      createdBy: adminUserId
+    });
+    inst.paidPrincipal = (inst.paidPrincipal || 0) + principalToPay;
+  }
+
+  if (interestToPay > 0) {
+    const interestRef = await generateRefId('EMI-I');
+    interestTx = await Transaction.create({
+      referenceId: interestRef,
+      groupId: loan.groupId,
+      type: 'INCOME',
+      category: 'LOAN_INTEREST',
+      amount: interestToPay,
+      memberId: member._id || member,
+      loanId: loan._id,
+      description: `EMI #${inst.installmentNumber} Interest Income - ${member.name}`,
+      date: new Date(),
+      createdBy: adminUserId
+    });
+    inst.paidInterest = (inst.paidInterest || 0) + interestToPay;
+  }
+
+  inst.paidAmount = (inst.paidPrincipal || 0) + (inst.paidInterest || 0);
+  const isFullyPaid = (inst.paidPrincipal >= inst.principal) && (inst.paidInterest >= inst.interest);
+
+  inst.status = isFullyPaid ? 'PAID' : 'PARTIALLY_PAID';
+  if (isFullyPaid) {
+    inst.paidAt = new Date();
+  }
   inst.recordedBy = adminUserId;
-  inst.transactionId = principalTx._id;
+  inst.transactionId = principalTx?._id || interestTx?._id;
   await inst.save();
 
-  // Check if all installments for this loan are paid
+  // Check if all installments for this loan are fully paid
   const unpaidCount = await LoanInstallment.countDocuments({ loanId: loan._id, status: { $ne: 'PAID' } });
   if (unpaidCount === 0) {
     loan.status = 'COMPLETED';
@@ -198,7 +221,6 @@ export const payInstallment = async (installmentId, adminUserId) => {
       message: `Your loan has been fully paid off!`
     });
   } else {
-    // Set next upcoming installment to DUE
     const nextInst = await LoanInstallment.findOne({ loanId: loan._id, status: 'UPCOMING' }).sort({ installmentNumber: 1 });
     if (nextInst) {
       nextInst.status = 'DUE';

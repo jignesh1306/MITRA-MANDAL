@@ -28,9 +28,9 @@ export const LoanDetails = () => {
     fetchDetails();
   }, [id]);
 
-  const handlePayEMI = async (inst) => {
+  const handlePayEMI = async (inst, componentType = 'FULL') => {
     try {
-      await api.post(`/loans/installments/${inst._id}/pay`);
+      await api.post(`/loans/installments/${inst._id}/pay`, { componentType });
       fetchDetails();
     } catch (err) {
       alert(err.message);
