@@ -18,6 +18,7 @@ import reportRoutes from './routes/report.routes.js';
 import settingsRoutes from './routes/settings.routes.js';
 import auditRoutes from './routes/audit.routes.js';
 import emiSubmissionRoutes from './routes/emiSubmission.routes.js';
+import uploadRoutes from './routes/upload.routes.js';
 
 import { errorHandler } from './middleware/error.middleware.js';
 
@@ -67,6 +68,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/audit-logs', auditRoutes);
 app.use('/api/emi-submissions', emiSubmissionRoutes);
+app.use('/api/upload', uploadRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', app: 'Mitra-Mandal Server' });
