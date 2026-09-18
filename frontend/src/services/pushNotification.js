@@ -22,9 +22,15 @@ export const registerAndSubscribePush = async () => {
       return false;
     }
 
-    // 1. Register Service Worker
-    const registration = await navigator.serviceWorker.register('/sw.js');
-    await navigator.serviceWorker.ready;
+    // 1. Register Service Worker safely
+    let registration;
+    try {
+      registration = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+    } catch (swErr) {
+      console.warn('Service worker registration bypassed:', swErr.message);
+      return false;
+    }
 
     // 2. Check or Request Permission
     let permission = Notification.permission;
@@ -39,7 +45,7 @@ export const registerAndSubscribePush = async () => {
 
     // 3. Get VAPID Public Key from backend
     const res = await api.get('/notifications/vapid-public-key');
-    const publicKey = res.data.publicKey;
+    const publicKey = res.data?.publicKey;
     if (!publicKey) return false;
 
     // 4. Check existing subscription
@@ -57,7 +63,7 @@ export const registerAndSubscribePush = async () => {
     console.log('Successfully subscribed to Mobile Push Notifications!');
     return true;
   } catch (error) {
-    console.warn('Push subscription failed:', error.message);
+    console.warn('Push subscription bypassed:', error.message);
     return false;
   }
 };
