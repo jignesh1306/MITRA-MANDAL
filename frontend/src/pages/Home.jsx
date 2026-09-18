@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Shield, Wallet, BadgeIndianRupee, PieChart, CheckCircle, Calculator, Sparkles, ArrowRight } from 'lucide-react';
+import { Shield, Wallet, BadgeIndianRupee, PieChart, CheckCircle, Calculator, Sparkles, ArrowRight, Phone, Mail, MessageCircle, Heart } from 'lucide-react';
 import api from '../services/api';
 
 export const Home = () => {
@@ -206,16 +206,89 @@ export const Home = () => {
         </motion.section>
       </div>
 
-      {/* Footer - Sealed without trailing whitespace */}
-      <footer className="w-full bg-gray-900 text-gray-400 py-6 px-4 text-center text-xs border-t-0 mt-auto">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
-          <div className="font-bold text-white text-sm font-gujarati">મિત્ર-મંડળ (Mitra-Mandal)</div>
-          <div className="flex gap-4 text-xs font-semibold">
-            <Link to="/login" className="hover:text-white transition-colors">Login</Link>
-            <Link to="/calculator" className="hover:text-white transition-colors">EMI Calculator</Link>
-            <span className="text-gray-600">Privacy & Terms</span>
+      {/* Rich Footer */}
+      <footer className="w-full bg-gray-900 text-gray-400 mt-auto border-t border-gray-800">
+        {/* Top Footer */}
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 grid grid-cols-1 sm:grid-cols-3 gap-8">
+          
+          {/* Column 1: Brand */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <img src="/logo.png" alt="Mitra-Mandal Logo" className="w-10 h-10 object-contain" />
+              <div>
+                <div className="text-white font-black text-base font-gujarati">મિત્ર-મંડળ</div>
+                <div className="text-gray-500 text-[11px] font-semibold">Mitra-Mandal Group</div>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 leading-relaxed font-gujarati">
+              સાથે બચત, સાથે વિકાસ — ગ્રુપ ફંડ, લોન અને EMIનું ડિજિટલ મેનેજમેન્ટ.
+            </p>
           </div>
-          <div className="text-[11px] text-gray-500">© 2026 મિત્ર-મંડળ. All rights reserved.</div>
+
+          {/* Column 2: Quick Links */}
+          <div className="space-y-3">
+            <h4 className="text-white font-bold text-xs uppercase tracking-widest">Quick Links</h4>
+            <div className="flex flex-col gap-2 text-xs font-semibold">
+              <Link to="/login" className="hover:text-white transition-colors flex items-center gap-1.5">
+                <ArrowRight className="w-3 h-3" /> Login
+              </Link>
+              <Link to="/signup" className="hover:text-white transition-colors flex items-center gap-1.5">
+                <ArrowRight className="w-3 h-3" /> Register / Join
+              </Link>
+              <Link to="/calculator" className="hover:text-white transition-colors flex items-center gap-1.5">
+                <ArrowRight className="w-3 h-3" /> EMI Calculator
+              </Link>
+            </div>
+          </div>
+
+          {/* Column 3: Contact */}
+          <div className="space-y-3">
+            <h4 className="text-white font-bold text-xs uppercase tracking-widest">Contact Us</h4>
+            <div className="flex flex-col gap-2.5 text-xs font-semibold">
+              <a
+                href="tel:9428896132"
+                className="flex items-center gap-2 hover:text-white transition-colors"
+              >
+                <div className="w-6 h-6 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
+                  <Phone className="w-3.5 h-3.5 text-white" />
+                </div>
+                <span>+91 94288 96132</span>
+              </a>
+
+              <a
+                href="https://wa.me/919428896132"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 hover:text-white transition-colors"
+              >
+                <div className="w-6 h-6 rounded-lg bg-green-600 flex items-center justify-center shrink-0">
+                  <MessageCircle className="w-3.5 h-3.5 text-white" />
+                </div>
+                <span>WhatsApp: 9428896132</span>
+              </a>
+
+              <a
+                href="mailto:bhavypatel1010@gmail.com"
+                className="flex items-center gap-2 hover:text-white transition-colors"
+              >
+                <div className="w-6 h-6 rounded-lg bg-red-600 flex items-center justify-center shrink-0">
+                  <Mail className="w-3.5 h-3.5 text-white" />
+                </div>
+                <span>bhavypatel1010@gmail.com</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Bar */}
+        <div className="border-t border-gray-800 py-4 px-4">
+          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2 text-[11px] text-gray-600">
+            <span>© 2026 મિત્ર-મંડળ (Mitra-Mandal). All rights reserved.</span>
+            <span className="flex items-center gap-1">
+              Made with <Heart className="w-3 h-3 text-red-500 fill-red-500 mx-0.5" /> by
+              <span className="text-gray-400 font-bold ml-1">PATEL BHAVY J.</span>
+            </span>
+          </div>
         </div>
       </footer>
     </div>
