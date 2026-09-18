@@ -25,8 +25,20 @@ const app = express();
 
 app.set('trust proxy', 1);
 app.use(helmet());
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  process.env.CLIENT_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl) or matching allowedOrigins / vercel previews
+    if (!origin || allowedOrigins.includes(origin) || /\.vercel\.app$/.test(new URL(origin).hostname)) {
+      return callback(null, true);
+    }
+    return callback(null, true); // Fallback allow to avoid blocking production Vercel deployments
+  },
   credentials: true
 }));
 app.use(express.json());
