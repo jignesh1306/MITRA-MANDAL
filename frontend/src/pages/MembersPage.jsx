@@ -4,7 +4,8 @@ import api from '../services/api';
 import { StatusBadge } from '../components/StatusBadge';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { formatCurrency } from '../utils/formatters';
-import { Users, Search, ChevronRight, UserCheck, UserX, Plus, Trash2, Calendar, BadgeIndianRupee, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Users, Search, ChevronRight, UserCheck, UserX, Plus, Trash2, Calendar, BadgeIndianRupee, ShieldCheck, CheckCircle2, MessageCircle } from 'lucide-react';
+import { generateMemberWhatsAppMessage, openWhatsApp } from '../utils/whatsappHelper';
 
 export const MembersPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -185,41 +186,99 @@ export const MembersPage = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {members.map((m) => (
-            <Link
-              key={m._id}
-              to={`/admin/members/${m._id}`}
-              className="p-5 bg-white rounded-3xl border border-gray-200 shadow-xs hover:shadow-md transition-all space-y-4 group relative"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-brand-50 text-brand-700 font-extrabold flex items-center justify-center text-base shrink-0 border border-brand-100">
-                  {m.name ? m.name.charAt(0).toUpperCase() : 'M'}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-1">
-                    <h3 className="text-sm font-bold text-gray-900 truncate group-hover:text-brand-600 transition-colors">
-                      {m.name}
-                    </h3>
-                    <StatusBadge status={m.status} />
-                  </div>
-                  <p className="text-xs text-gray-500 truncate">{m.email || m.phone}</p>
-                </div>
-              </div>
+          {members.map((m) => {
+            const hasLoan = m.loanSummary?.hasActiveLoan;
+            const isFundPaid = m.currentContribution?.status === 'PAID';
 
-              {m.status === 'PENDING' && (
-                <div className="pt-2 border-t border-gray-100 flex gap-2">
+            return (
+              <div
+                key={m._id}
+                className="p-5 bg-white rounded-3xl border border-gray-200 shadow-xs hover:shadow-md transition-all space-y-4 relative flex flex-col justify-between"
+              >
+                <Link
+                  to={`/admin/members/${m._id}`}
+                  className="block space-y-3 group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-brand-50 text-brand-700 font-extrabold flex items-center justify-center text-base shrink-0 border border-brand-100">
+                      {m.name ? m.name.charAt(0).toUpperCase() : 'M'}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <h3 className="text-sm font-bold text-gray-900 truncate group-hover:text-brand-600 transition-colors">
+                          {m.name}
+                        </h3>
+                        <StatusBadge status={m.status} />
+                      </div>
+                      <p className="text-xs text-gray-500 truncate">{m.phone} {m.email ? `• ${m.email}` : ''}</p>
+                    </div>
+                  </div>
+
+                  {/* Quick Financial Snapshot Badges */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
+                    <span className={`px-2 py-0.5 rounded-lg font-bold ${
+                      isFundPaid 
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                        : 'bg-rose-50 text-rose-700 border border-rose-200'
+                    }`}>
+                      ફંડ: {isFundPaid ? 'ચૂકવેલ' : 'બાકી'}
+                    </span>
+
+                    {hasLoan ? (
+                      <span className="px-2 py-0.5 rounded-lg font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                        લોન: {formatCurrency(m.loanSummary.remainingPrincipal)} બાકી
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-lg font-medium bg-gray-50 text-gray-500 border border-gray-100">
+                        કોઈ લોન નથી
+                      </span>
+                    )}
+                  </div>
+                </Link>
+
+                {/* Bottom Actions Bar */}
+                <div className="pt-3 border-t border-gray-100 flex items-center gap-2">
+                  {/* WhatsApp Message Button */}
                   <button
                     type="button"
-                    onClick={(e) => openApprovalModal(m, e)}
-                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                    title="WhatsApp પર હિસાબ મોકલો"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const msg = generateMemberWhatsAppMessage(m);
+                      openWhatsApp(m.phone, msg);
+                    }}
+                    className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <UserCheck className="w-4 h-4" />
-                    Approve Member
+                    <MessageCircle className="w-4 h-4 fill-white text-emerald-600" />
+                    <span>WhatsApp હિસાબ</span>
                   </button>
+
+                  {/* Detail link icon button */}
+                  <Link
+                    to={`/admin/members/${m._id}`}
+                    title="સભ્યની સંપૂર્ણ વિગત જુઓ"
+                    className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors shrink-0"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Link>
                 </div>
-              )}
-            </Link>
-          ))}
+
+                {m.status === 'PENDING' && (
+                  <div className="pt-2 border-t border-gray-100">
+                    <button
+                      type="button"
+                      onClick={(e) => openApprovalModal(m, e)}
+                      className="w-full py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-extrabold rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <UserCheck className="w-4 h-4" />
+                      Approve Member
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 

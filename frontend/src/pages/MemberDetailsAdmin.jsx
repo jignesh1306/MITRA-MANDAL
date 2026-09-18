@@ -9,8 +9,10 @@ import {
   ArrowUpRight, 
   ArrowDownLeft, 
   Receipt,
-  CheckCircle2
+  CheckCircle2,
+  MessageCircle
 } from 'lucide-react';
+import { generateMemberWhatsAppMessage, openWhatsApp } from '../utils/whatsappHelper';
 
 export const MemberDetailsAdmin = () => {
   const { id } = useParams();
@@ -36,7 +38,7 @@ export const MemberDetailsAdmin = () => {
       </div>
 
       {/* Compact Member Header Card */}
-      <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between gap-3">
+      <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-full bg-brand-600 text-white font-bold text-base flex items-center justify-center shrink-0">
             {user.name.charAt(0)}
@@ -53,7 +55,37 @@ export const MemberDetailsAdmin = () => {
             </p>
           </div>
         </div>
-        <StatusBadge status={user.status} />
+
+        <div className="flex items-center gap-2 self-end sm:self-auto">
+          <button
+            type="button"
+            title="WhatsApp પર હિસાબ મોકલો"
+            onClick={() => {
+              const activeLoan = loans.find(l => l.status === 'ACTIVE');
+              const memberPayload = {
+                name: user.name,
+                phone: user.phone,
+                currentContribution: data.currentContribution,
+                groupFundBalance: data.groupFundBalance,
+                loanSummary: activeLoan ? {
+                  hasActiveLoan: true,
+                  principal: activeLoan.principal,
+                  paidPrincipal: activeLoan.summary?.paidPrincipal || 0,
+                  remainingPrincipal: activeLoan.summary?.remainingPrincipal || 0,
+                  remainingInterest: activeLoan.summary?.remainingInterest || 0,
+                  currentEMI: activeLoan.installments?.find(i => i.status !== 'PAID')?.emi || 0
+                } : { hasActiveLoan: false }
+              };
+              const msg = generateMemberWhatsAppMessage(memberPayload);
+              openWhatsApp(user.phone, msg);
+            }}
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <MessageCircle className="w-4 h-4 fill-white text-emerald-600" />
+            <span>WhatsApp પર હિસાબ મોકલો</span>
+          </button>
+          <StatusBadge status={user.status} />
+        </div>
       </div>
 
       {/* Minimal Compact Summary Cards Grid */}

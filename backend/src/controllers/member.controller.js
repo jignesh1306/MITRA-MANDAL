@@ -24,35 +24,78 @@ export const getMembers = async (req, res, next) => {
       ];
     }
 
+    const group = await Group.findOne();
+    const fundSummary = group ? await getFundSummary(group._id) : { currentBalance: 0 };
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
+
     const users = await User.find(query).select('-passwordHash').sort({ createdAt: -1 });
 
     const enrichedUsers = await Promise.all(users.map(async (uDoc) => {
       const u = uDoc.toObject();
+
+      // Fetch current month contribution
+      const currentContribution = await Contribution.findOne({
+        memberId: u._id,
+        month: currentMonth,
+        year: currentYear
+      });
+
+      const monthlyContributionAmount = (u.monthlyContribution && u.monthlyContribution > 0)
+        ? u.monthlyContribution
+        : (group?.monthlyContribution || 200000);
+
+      const contributionInfo = {
+        month: currentMonth,
+        year: currentYear,
+        expectedAmount: monthlyContributionAmount,
+        status: currentContribution ? currentContribution.status : 'PENDING',
+        paidAmount: currentContribution?.status === 'PAID' ? currentContribution.amount : 0
+      };
+
+      // Fetch active loan
       const activeLoan = await Loan.findOne({ memberId: u._id, status: 'ACTIVE' });
       
       let loanSummary = null;
       if (activeLoan) {
-        const installments = await LoanInstallment.find({ loanId: activeLoan._id });
+        const installments = await LoanInstallment.find({ loanId: activeLoan._id }).sort({ installmentNumber: 1 });
         let paidP = 0;
         let paidI = 0;
+        let nextDueInstallment = null;
+
         for (const inst of installments) {
           if (inst.status === 'PAID') {
             paidP += inst.principal;
             paidI += inst.interest;
+          } else if (!nextDueInstallment) {
+            nextDueInstallment = inst;
           }
         }
+
+        const remainingPrincipal = Math.max(0, activeLoan.principal - paidP);
+        const remainingInterest = Math.max(0, activeLoan.totalInterest - paidI);
+
         loanSummary = {
           loanId: activeLoan._id,
           hasActiveLoan: true,
           principal: activeLoan.principal,
-          remainingPrincipal: Math.max(0, activeLoan.principal - paidP),
+          paidPrincipal: paidP,
+          remainingPrincipal,
+          totalInterest: activeLoan.totalInterest,
+          paidInterest: paidI,
+          remainingInterest,
           totalRepayment: activeLoan.totalRepayment,
+          currentEMI: nextDueInstallment ? nextDueInstallment.emi : 0,
+          currentEMIPrincipal: nextDueInstallment ? nextDueInstallment.principal : 0,
+          currentEMIInterest: nextDueInstallment ? nextDueInstallment.interest : 0,
           progressPercent: activeLoan.principal > 0 ? Math.round((paidP / activeLoan.principal) * 100) : 0
         };
       }
 
       return {
         ...u,
+        groupFundBalance: fundSummary.currentBalance || 0,
+        currentContribution: contributionInfo,
         loanSummary: loanSummary || { hasActiveLoan: false }
       };
     }));
@@ -118,8 +161,28 @@ export const getMemberById = async (req, res, next) => {
       };
     }));
 
+    const group = await Group.findOne();
+    const fundSummary = group ? await getFundSummary(group._id) : { currentBalance: 0 };
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
+
+    const currentContribution = contributions.find(c => c.month === currentMonth && c.year === currentYear);
+    const monthlyContributionAmount = (user.monthlyContribution && user.monthlyContribution > 0)
+      ? user.monthlyContribution
+      : (group?.monthlyContribution || 200000);
+
+    const contributionInfo = {
+      month: currentMonth,
+      year: currentYear,
+      expectedAmount: monthlyContributionAmount,
+      status: currentContribution ? currentContribution.status : 'PENDING',
+      paidAmount: currentContribution?.status === 'PAID' ? currentContribution.amount : 0
+    };
+
     res.json({
       user,
+      groupFundBalance: fundSummary.currentBalance || 0,
+      currentContribution: contributionInfo,
       summary: {
         totalPaidContributions,
         pendingContributions,
