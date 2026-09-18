@@ -35,6 +35,9 @@ export const AuthProvider = ({ children }) => {
     const res = await api.post('/auth/login', { phone, password, role });
     setUser(res.data.user);
     localStorage.setItem('mm_user', JSON.stringify(res.data.user));
+    if (res.data.token) {
+      localStorage.setItem('mm_token', res.data.token);
+    }
     return res.data;
   };
 
@@ -43,6 +46,9 @@ export const AuthProvider = ({ children }) => {
     if (res.data.user) {
       setUser(res.data.user);
       localStorage.setItem('mm_user', JSON.stringify(res.data.user));
+    }
+    if (res.data.token) {
+      localStorage.setItem('mm_token', res.data.token);
     }
     return res.data;
   };
@@ -53,6 +59,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {}
     setUser(null);
     localStorage.removeItem('mm_user');
+    localStorage.removeItem('mm_token');
   };
 
   return (
