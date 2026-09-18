@@ -169,7 +169,7 @@ export const approveSubmission = async (req, res, next) => {
       });
     }
 
-    // 2. If Loan Principal or Loan Interest included, update Loan & Installments
+    // 2. If Loan Principal or Loan Interest included, update Loan & Installments with split accounting
     if ((submission.includeLoanPrincipal && submission.loanPrincipalAmount > 0) || 
         (submission.includeLoanInterest && submission.loanInterestAmount > 0)) {
       
@@ -181,36 +181,69 @@ export const approveSubmission = async (req, res, next) => {
       }
 
       if (loan) {
-        const installments = await LoanInstallment.find({ loanId: loan._id, status: 'PENDING' })
-          .sort({ installmentNumber: 1 });
+        // Find next unpaid or partially paid installment
+        const nextInst = await LoanInstallment.findOne({ 
+          loanId: loan._id, 
+          status: { $in: ['DUE', 'UPCOMING', 'PARTIALLY_PAID', 'OVERDUE'] } 
+        }).sort({ installmentNumber: 1 });
 
-        let pRem = submission.loanPrincipalAmount;
-        let iRem = submission.loanInterestAmount;
+        if (nextInst) {
+          if (submission.includeLoanPrincipal && submission.loanPrincipalAmount > 0) {
+            nextInst.paidPrincipal = (nextInst.paidPrincipal || 0) + submission.loanPrincipalAmount;
+          }
+          if (submission.includeLoanInterest && submission.loanInterestAmount > 0) {
+            nextInst.paidInterest = (nextInst.paidInterest || 0) + submission.loanInterestAmount;
+          }
 
-        for (const inst of installments) {
-          if (pRem <= 0 && iRem <= 0) break;
-          inst.status = 'PAID';
-          inst.paidAt = new Date();
-          await inst.save();
+          nextInst.paidAmount = (nextInst.paidPrincipal || 0) + (nextInst.paidInterest || 0);
+          const isFullyPaid = (nextInst.paidPrincipal >= nextInst.principal) && (nextInst.paidInterest >= nextInst.interest);
+          nextInst.status = isFullyPaid ? 'PAID' : 'PARTIALLY_PAID';
+          if (isFullyPaid) {
+            nextInst.paidAt = new Date();
+          }
+          nextInst.recordedBy = req.user._id;
+          await nextInst.save();
         }
 
-        const refIdLoan = await generateRefId('LOAN_EMI');
-        await Transaction.create({
-          groupId: submission.groupId,
-          memberId: submission.memberId,
-          type: 'INCOME',
-          category: 'LOAN_REPAYMENT',
-          amount: (pRem || 0) + (iRem || 0) || (submission.loanPrincipalAmount + submission.loanInterestAmount),
-          description: `Loan Repayment (Principal: ₹${(submission.loanPrincipalAmount/100).toLocaleString('en-IN')}, Interest: ₹${(submission.loanInterestAmount/100).toLocaleString('en-IN')})`,
-          date: new Date(),
-          referenceId: refIdLoan,
-          createdBy: req.user._id
-        });
+        // Separate Accounting Transaction 1: LOAN_REPAYMENT_PRINCIPAL
+        if (submission.includeLoanPrincipal && submission.loanPrincipalAmount > 0) {
+          const refIdPrincipal = await generateRefId('EMI-P');
+          await Transaction.create({
+            groupId: submission.groupId,
+            memberId: submission.memberId,
+            loanId: loan._id,
+            type: 'INCOME',
+            category: 'LOAN_REPAYMENT_PRINCIPAL',
+            amount: submission.loanPrincipalAmount,
+            description: `Loan Principal Repayment for Month ${submission.month}/${submission.year}`,
+            date: new Date(),
+            referenceId: refIdPrincipal,
+            createdBy: req.user._id
+          });
+        }
 
-        // Check if all installments paid
-        const pendingInst = await LoanInstallment.findOne({ loanId: loan._id, status: 'PENDING' });
-        if (!pendingInst) {
+        // Separate Accounting Transaction 2: LOAN_INTEREST
+        if (submission.includeLoanInterest && submission.loanInterestAmount > 0) {
+          const refIdInterest = await generateRefId('EMI-I');
+          await Transaction.create({
+            groupId: submission.groupId,
+            memberId: submission.memberId,
+            loanId: loan._id,
+            type: 'INCOME',
+            category: 'LOAN_INTEREST',
+            amount: submission.loanInterestAmount,
+            description: `Loan Interest Income for Month ${submission.month}/${submission.year}`,
+            date: new Date(),
+            referenceId: refIdInterest,
+            createdBy: req.user._id
+          });
+        }
+
+        // Check if all installments for this loan are fully paid
+        const unpaidCount = await LoanInstallment.countDocuments({ loanId: loan._id, status: { $ne: 'PAID' } });
+        if (unpaidCount === 0) {
           loan.status = 'COMPLETED';
+          loan.completedAt = new Date();
           await loan.save();
         }
       }
