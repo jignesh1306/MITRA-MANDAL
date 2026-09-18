@@ -547,6 +547,13 @@ export const SubmitEMIPage = () => {
             />
           </div>
 
+          {error && (
+            <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+              <span>{error}</span>
+            </div>
+          )}
+
           {/* Submit Button */}
           <button
             type="submit"
