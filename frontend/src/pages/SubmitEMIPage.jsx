@@ -151,8 +151,8 @@ export const SubmitEMIPage = () => {
       return setError('You can only submit EMI payment proof for the current month.');
     }
 
-    if (isAlreadyPaid) {
-      return setError('You have already paid your EMI for this month. Duplicate submissions are not allowed.');
+    if (isEverythingPaid) {
+      return setError('You have already fully paid your EMI for this month. All records are settled.');
     }
 
     if (isSubmissionPending) {
@@ -512,7 +512,6 @@ export const SubmitEMIPage = () => {
               <input
                 type="file"
                 accept="image/*"
-                required
                 onChange={handleFileChange}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
