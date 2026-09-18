@@ -23,8 +23,11 @@ export const SubmitEMIPage = () => {
   const navigate = useNavigate();
 
   const now = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
-  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const currentActualMonth = now.getMonth() + 1;
+  const currentActualYear = now.getFullYear();
+
+  const [selectedMonth, setSelectedMonth] = useState(currentActualMonth);
+  const [selectedYear, setSelectedYear] = useState(currentActualYear);
 
   const [includeRegular, setIncludeRegular] = useState(true);
   const [regularAmount, setRegularAmount] = useState(2000); // Default ₹2,000
@@ -38,6 +41,10 @@ export const SubmitEMIPage = () => {
   const [includeLoanInterest, setIncludeLoanInterest] = useState(false);
   const [loanInterestAmount, setLoanInterestAmount] = useState(0);
 
+  // Status records from backend
+  const [allContributions, setAllContributions] = useState([]);
+  const [mySubmissions, setMySubmissions] = useState([]);
+
   const [selectedFile, setSelectedFile] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
   const [note, setNote] = useState('');
@@ -47,27 +54,64 @@ export const SubmitEMIPage = () => {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  // Fetch all user contributions, active loans and pending submissions
   useEffect(() => {
     setLoading(true);
-    // Fetch active loan data for current user if any
-    api.get('/loans?status=ACTIVE')
-      .then(res => {
-        const myLoan = res.data.find(l => l.memberId?._id === user._id || l.memberId === user._id);
-        if (myLoan) {
+    Promise.all([
+      api.get('/loans/my').catch(() => ({ data: [] })),
+      api.get('/contributions/my').catch(() => ({ data: [] })),
+      api.get('/emi-submissions').catch(() => ({ data: [] }))
+    ])
+      .then(([loansRes, contribsRes, subRes]) => {
+        // Set contributions
+        setAllContributions(contribsRes.data || []);
+        setMySubmissions(subRes.data || []);
+
+        // Find active running loan
+        const activeLoan = (loansRes.data || []).find(l => l.status === 'ACTIVE' || l.status === 'APPROVED');
+        if (activeLoan) {
           setHasActiveLoan(true);
-          setActiveLoanData(myLoan);
-          
-          // Calculate estimated principal & interest for next installment
-          const estimatedPrincipal = Math.round(myLoan.principal / (myLoan.months * 100)) || 5000;
-          const estimatedInterest = Math.round(myLoan.totalInterest / (myLoan.months * 100)) || 500;
-          
-          setLoanPrincipalAmount(estimatedPrincipal);
-          setLoanInterestAmount(estimatedInterest);
+          setActiveLoanData(activeLoan);
+
+          // Find next pending installment if available
+          const nextPendingInst = (activeLoan.installments || []).find(i => i.status !== 'PAID');
+          if (nextPendingInst) {
+            setLoanPrincipalAmount(Math.round(nextPendingInst.principal / 100));
+            setLoanInterestAmount(Math.round(nextPendingInst.interest / 100));
+          } else {
+            const estP = Math.round(activeLoan.principal / (activeLoan.months * 100)) || 5000;
+            const estI = Math.round(activeLoan.totalInterest / (activeLoan.months * 100)) || 500;
+            setLoanPrincipalAmount(estP);
+            setLoanInterestAmount(estI);
+          }
+        } else {
+          setHasActiveLoan(false);
+          setActiveLoanData(null);
         }
       })
-      .catch(() => {})
       .finally(() => setLoading(false));
   }, [user._id]);
+
+  // Determine Month Category: PAST, FUTURE, or CURRENT
+  const isPast = selectedYear < currentActualYear || (selectedYear === currentActualYear && selectedMonth < currentActualMonth);
+  const isFuture = selectedYear > currentActualYear || (selectedYear === currentActualYear && selectedMonth > currentActualMonth);
+  const isCurrent = selectedYear === currentActualYear && selectedMonth === currentActualMonth;
+
+  // Check if current or selected month is already paid or submitted
+  const matchingContrib = allContributions.find(c => c.month === selectedMonth && c.year === selectedYear);
+  const isRegularPaid = matchingContrib?.status === 'PAID';
+
+  const matchingSubmission = mySubmissions.find(s => s.month === selectedMonth && s.year === selectedYear);
+  const isSubmissionPending = matchingSubmission && matchingSubmission.status === 'PENDING';
+  const isSubmissionApproved = matchingSubmission && matchingSubmission.status === 'APPROVED';
+
+  // If already paid all components
+  const isAlreadyPaid = isRegularPaid || isSubmissionApproved;
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -96,8 +140,20 @@ export const SubmitEMIPage = () => {
     setError('');
     setSuccessMsg('');
 
+    if (!isCurrent) {
+      return setError('You can only submit EMI payment proof for the current month.');
+    }
+
+    if (isAlreadyPaid) {
+      return setError('You have already paid your EMI for this month. Duplicate submissions are not allowed.');
+    }
+
+    if (isSubmissionPending) {
+      return setError('You already have a pending EMI submission awaiting Admin review.');
+    }
+
     if (!includeRegular && !includeLoanPrincipal && !includeLoanInterest) {
-      return setError('Please select at least one EMI payment component (Regular Fund, Loan Principal, or Loan Interest).');
+      return setError('Please select at least one component (Regular Fund, Loan Principal, or Loan Interest).');
     }
 
     if (calculatedTotal <= 0) {
@@ -105,7 +161,7 @@ export const SubmitEMIPage = () => {
     }
 
     if (!selectedFile) {
-      return setError('Please upload a payment successful screenshot proof image.');
+      return setError('Please upload your payment successful screenshot proof image.');
     }
 
     setSubmitting(true);
@@ -128,7 +184,7 @@ export const SubmitEMIPage = () => {
       await api.post('/emi-submissions', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      setSuccessMsg('EMI payment submission sent successfully! Admin will review your payment proof.');
+      setSuccessMsg('EMI payment submission sent successfully! Admin will verify your payment proof.');
       setTimeout(() => {
         navigate('/member/contributions');
       }, 2000);
@@ -138,11 +194,6 @@ export const SubmitEMIPage = () => {
       setSubmitting(false);
     }
   };
-
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
 
   if (loading) {
     return (
@@ -181,7 +232,7 @@ export const SubmitEMIPage = () => {
         </div>
       )}
 
-      {/* Member Details Info Banner */}
+      {/* Member Details & Month/Year Selection Banner */}
       <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
           <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-3">
@@ -204,7 +255,7 @@ export const SubmitEMIPage = () => {
                 <select
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                  className="bg-white border border-gray-200 rounded-lg px-2 py-1 text-xs font-bold text-gray-900"
+                  className="bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs font-bold text-gray-900 focus:border-brand-600 outline-hidden"
                 >
                   {monthNames.map((m, idx) => (
                     <option key={idx} value={idx + 1}>{m}</option>
@@ -213,7 +264,7 @@ export const SubmitEMIPage = () => {
                 <select
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
-                  className="bg-white border border-gray-200 rounded-lg px-2 py-1 text-xs font-bold text-gray-900"
+                  className="bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs font-bold text-gray-900 focus:border-brand-600 outline-hidden"
                 >
                   {[2025, 2026, 2027].map(y => (
                     <option key={y} value={y}>{y}</option>
@@ -225,155 +276,234 @@ export const SubmitEMIPage = () => {
         </div>
       </div>
 
-      {/* Main Payment Selection & Screenshot Form */}
-      <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-6">
-        <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2 border-b border-gray-100 pb-3">
-          <Calculator className="w-4 h-4 text-brand-600" />
-          Select Payment Components
-        </h3>
-
-        <div className="space-y-3">
-          {/* Option 1: Regular Monthly Fund EMI */}
-          <label className={`p-4 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-            includeRegular 
-              ? 'bg-brand-50/60 border-brand-300 shadow-xs' 
-              : 'bg-gray-50 border-gray-200 opacity-80'
-          }`}>
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={includeRegular}
-                onChange={(e) => setIncludeRegular(e.target.checked)}
-                className="w-4 h-4 text-brand-600 rounded-md focus:ring-brand-500"
-              />
-              <div>
-                <span className="text-xs font-bold text-gray-900 block">Regular Monthly Fund Contribution</span>
-                <span className="text-[11px] text-gray-500 font-medium">Standard monthly group fund deposit</span>
-              </div>
-            </div>
-            <div className="text-right">
-              <span className="text-sm font-extrabold text-brand-700">₹{regularAmount.toLocaleString('en-IN')}</span>
-            </div>
-          </label>
-
-          {/* Option 2 & 3: Active Loan Options if member has active loan */}
-          {hasActiveLoan && (
-            <>
-              {/* Option 2: Loan Principal EMI */}
-              <label className={`p-4 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                includeLoanPrincipal 
-                  ? 'bg-emerald-50/60 border-emerald-300 shadow-xs' 
-                  : 'bg-gray-50 border-gray-200 opacity-80'
-              }`}>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={includeLoanPrincipal}
-                    onChange={(e) => setIncludeLoanPrincipal(e.target.checked)}
-                    className="w-4 h-4 text-emerald-600 rounded-md focus:ring-emerald-500"
-                  />
-                  <div>
-                    <span className="text-xs font-bold text-gray-900 block">Loan Principal EMI</span>
-                    <span className="text-[11px] text-gray-500 font-medium">Principal repayment towards active loan</span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-sm font-extrabold text-emerald-700">₹{loanPrincipalAmount.toLocaleString('en-IN')}</span>
-                </div>
-              </label>
-
-              {/* Option 3: Loan Interest Amount */}
-              <label className={`p-4 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                includeLoanInterest 
-                  ? 'bg-amber-50/60 border-amber-300 shadow-xs' 
-                  : 'bg-gray-50 border-gray-200 opacity-80'
-              }`}>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={includeLoanInterest}
-                    onChange={(e) => setIncludeLoanInterest(e.target.checked)}
-                    className="w-4 h-4 text-amber-600 rounded-md focus:ring-amber-500"
-                  />
-                  <div>
-                    <span className="text-xs font-bold text-gray-900 block">Loan Interest Amount</span>
-                    <span className="text-[11px] text-gray-500 font-medium">Monthly interest charge on active loan</span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-sm font-extrabold text-amber-700">₹{loanInterestAmount.toLocaleString('en-IN')}</span>
-                </div>
-              </label>
-            </>
-          )}
-        </div>
-
-        {/* Auto-Calculated Total Box */}
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 text-white flex justify-between items-center shadow-md">
-          <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-brand-100">Total Payable Amount</span>
-            <p className="text-xs text-brand-100 mt-0.5">Auto-calculated based on your selections</p>
+      {/* RULE 1: PAST MONTH NOTICE */}
+      {isPast && (
+        <div className="p-6 rounded-3xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-center space-y-2 shadow-xs">
+          <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto mb-2">
+            <CheckCircle2 className="w-6 h-6" />
           </div>
-          <div className="text-2xl font-black">
-            ₹{calculatedTotal.toLocaleString('en-IN')}
-          </div>
+          <h3 className="text-base font-black text-emerald-900">
+            તમે આ મહિનાનું EMI અને લોન વ્યાજ પહેલેથી જ ચૂકવી દીધું છે!
+          </h3>
+          <p className="text-xs text-emerald-700 max-w-md mx-auto">
+            You have already paid this month's regular fund contribution, loan EMI, and interest. Past records are permanently settled and recorded in your ledger.
+          </p>
         </div>
+      )}
 
-        {/* Payment Proof Screenshot Upload Section */}
-        <div className="space-y-2 pt-2 border-t border-gray-100">
-          <label className="block text-xs font-bold text-gray-900">
-            Upload Payment Successful Screenshot <span className="text-red-500">*</span>
-          </label>
-          
-          <div className="border-2 border-dashed border-gray-200 hover:border-brand-400 rounded-2xl p-6 text-center bg-slate-50/50 transition-all relative">
-            <input
-              type="file"
-              accept="image/*"
-              required
-              onChange={handleFileChange}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            />
-            {filePreview ? (
-              <div className="flex flex-col items-center space-y-2">
-                <img src={filePreview} alt="Payment Proof Preview" className="max-h-48 rounded-xl border border-gray-200 shadow-sm object-contain" />
-                <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                  <CheckCircle2 className="w-4 h-4" /> Screenshot attached ({selectedFile?.name})
-                </span>
-                <span className="text-[10px] text-gray-400">Click to replace image</span>
+      {/* RULE 2: FUTURE MONTH NOTICE */}
+      {isFuture && (
+        <div className="p-6 rounded-3xl bg-amber-50 border border-amber-200 text-amber-900 text-center space-y-2 shadow-xs">
+          <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto mb-2">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-black text-amber-900">
+            તમે અત્યારે ભવિષ્યના મહિનાનું EMI સબમિટ કરી શકતા નથી, કૃપા કરીને રાહ જુઓ.
+          </h3>
+          <p className="text-xs text-amber-700 max-w-md mx-auto">
+            You cannot submit your EMI right now for future months ({monthNames[selectedMonth - 1]} {selectedYear}). Please wait until that month arrives.
+          </p>
+        </div>
+      )}
+
+      {/* RULE 4: CURRENT MONTH ALREADY PAID OR PENDING NOTICE */}
+      {isCurrent && isAlreadyPaid && (
+        <div className="p-6 rounded-3xl bg-blue-50 border border-blue-200 text-blue-950 text-center space-y-2 shadow-xs">
+          <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center mx-auto mb-2">
+            <CheckCircle2 className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-black text-blue-900">
+            તમે ચાલુ મહિનાનું ({monthNames[selectedMonth - 1]} {selectedYear}) ચુકવણું પહેલેથી જ કરી દીધું છે!
+          </h3>
+          <p className="text-xs text-blue-700 max-w-md mx-auto">
+            You have already successfully paid your EMI for this month. You cannot submit your payment again and again.
+          </p>
+        </div>
+      )}
+
+      {isCurrent && isSubmissionPending && (
+        <div className="p-6 rounded-3xl bg-purple-50 border border-purple-200 text-purple-950 text-center space-y-2 shadow-xs">
+          <div className="w-12 h-12 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center mx-auto mb-2">
+            <CheckCircle2 className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-black text-purple-900">
+            તમારી ચાલુ મહિનાની EMI અરજી એડમિન ચકાસણી હેઠળ છે.
+          </h3>
+          <p className="text-xs text-purple-700 max-w-md mx-auto">
+            Your payment proof for {monthNames[selectedMonth - 1]} {selectedYear} is currently under Admin verification. Please wait for approval before submitting again.
+          </p>
+        </div>
+      )}
+
+      {/* RULE 3: CURRENT MONTH FORM (ENABLED ONLY IF CURRENT MONTH AND NOT ALREADY PAID/PENDING) */}
+      {isCurrent && !isAlreadyPaid && !isSubmissionPending && (
+        <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-6">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+            <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+              <Calculator className="w-4 h-4 text-brand-600" />
+              Select Payment Components ({monthNames[selectedMonth - 1]} {selectedYear})
+            </h3>
+            {hasActiveLoan && (
+              <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-black rounded-full">
+                Active Loan Detected
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            {/* Component 1: Regular Monthly Fund EMI */}
+            <label className={`p-4 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+              includeRegular 
+                ? 'bg-brand-50/60 border-brand-300 shadow-xs' 
+                : 'bg-gray-50 border-gray-200 opacity-80'
+            }`}>
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={includeRegular}
+                  onChange={(e) => setIncludeRegular(e.target.checked)}
+                  className="w-4 h-4 text-brand-600 rounded-md focus:ring-brand-500"
+                />
+                <div>
+                  <span className="text-xs font-bold text-gray-900 block">૧. નિયમિત માસિક ફંડ ફાળો (Regular Monthly Fund)</span>
+                  <span className="text-[11px] text-gray-500 font-medium">Standard monthly group fund contribution</span>
+                </div>
               </div>
+              <div className="text-right">
+                <span className="text-sm font-extrabold text-brand-700">₹{regularAmount.toLocaleString('en-IN')}</span>
+              </div>
+            </label>
+
+            {/* RULE 5: Component 2 & 3 appear ONLY when user has an active running loan */}
+            {hasActiveLoan ? (
+              <>
+                {/* Component 2: Loan Principal EMI */}
+                <label className={`p-4 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                  includeLoanPrincipal 
+                    ? 'bg-emerald-50/60 border-emerald-300 shadow-xs' 
+                    : 'bg-gray-50 border-gray-200 opacity-80'
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={includeLoanPrincipal}
+                      onChange={(e) => setIncludeLoanPrincipal(e.target.checked)}
+                      className="w-4 h-4 text-emerald-600 rounded-md focus:ring-emerald-500"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-gray-900 block">૨. લોન મુદ્દલ હપ્તો (Loan Principal EMI)</span>
+                      <span className="text-[11px] text-gray-500 font-medium">Principal installment repayment towards active loan</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-extrabold text-emerald-700">₹{loanPrincipalAmount.toLocaleString('en-IN')}</span>
+                  </div>
+                </label>
+
+                {/* Component 3: Loan Interest Amount */}
+                <label className={`p-4 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                  includeLoanInterest 
+                    ? 'bg-amber-50/60 border-amber-300 shadow-xs' 
+                    : 'bg-gray-50 border-gray-200 opacity-80'
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={includeLoanInterest}
+                      onChange={(e) => setIncludeLoanInterest(e.target.checked)}
+                      className="w-4 h-4 text-amber-600 rounded-md focus:ring-amber-500"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-gray-900 block">૩. લોન વ્યાજ રકમ (Loan Interest Amount)</span>
+                      <span className="text-[11px] text-gray-500 font-medium">Monthly calculated reducing interest</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-extrabold text-amber-700">₹{loanInterestAmount.toLocaleString('en-IN')}</span>
+                  </div>
+                </label>
+              </>
             ) : (
-              <div className="flex flex-col items-center space-y-2">
-                <div className="w-12 h-12 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center">
-                  <Upload className="w-6 h-6" />
-                </div>
-                <p className="text-xs font-bold text-gray-700">Click or Drag & Drop Payment Screenshot</p>
-                <p className="text-[10px] text-gray-400">Supported formats: PNG, JPG, JPEG, WEBP (Max 10MB)</p>
+              <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100 text-gray-500 text-[11px] flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-gray-400 shrink-0" />
+                <span>તમારી કોઈ સક્રિય લોન નથી, તેથી ફક્ત નિયમિત માસિક ફંડ જ લાગુ પડશે. (No active loan found)</span>
               </div>
             )}
           </div>
-        </div>
 
-        {/* Optional Note */}
-        <div className="space-y-1">
-          <label className="block text-xs font-bold text-gray-700">Additional Note (Optional)</label>
-          <textarea
-            rows="2"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Add any message or transaction ref number for Admin..."
-            className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:border-brand-600 outline-hidden transition-all"
-          />
-        </div>
+          {/* Auto-Calculated Total Box */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 text-white flex justify-between items-center shadow-md">
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-brand-100">Total Payable Amount</span>
+              <p className="text-xs text-brand-100 mt-0.5">
+                Auto-calculated: {[
+                  includeRegular ? `ફંડ ₹${regularAmount}` : null,
+                  includeLoanPrincipal ? `મુદ્દલ ₹${loanPrincipalAmount}` : null,
+                  includeLoanInterest ? `વ્યાજ ₹${loanInterestAmount}` : null
+                ].filter(Boolean).join(' + ') || 'કોઈ વિકલ્પ પસંદ કરેલ નથી'}
+              </p>
+            </div>
+            <div className="text-2xl font-black">
+              ₹{calculatedTotal.toLocaleString('en-IN')}
+            </div>
+          </div>
 
-        {/* Submit Button */}
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full py-3.5 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-700 hover:to-indigo-700 text-white font-bold rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all cursor-pointer disabled:opacity-50"
-        >
-          {submitting ? 'Uploading Proof & Submitting...' : 'Submit Payment Request to Admin'}
-        </button>
-      </form>
+          {/* Payment Proof Screenshot Upload Section */}
+          <div className="space-y-2 pt-2 border-t border-gray-100">
+            <label className="block text-xs font-bold text-gray-900">
+              Upload Payment Successful Screenshot <span className="text-red-500">*</span>
+            </label>
+            
+            <div className="border-2 border-dashed border-gray-200 hover:border-brand-400 rounded-2xl p-6 text-center bg-slate-50/50 transition-all relative">
+              <input
+                type="file"
+                accept="image/*"
+                required
+                onChange={handleFileChange}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+              {filePreview ? (
+                <div className="flex flex-col items-center space-y-2">
+                  <img src={filePreview} alt="Payment Proof Preview" className="max-h-48 rounded-xl border border-gray-200 shadow-sm object-contain" />
+                  <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                    <CheckCircle2 className="w-4 h-4" /> Screenshot attached ({selectedFile?.name})
+                  </span>
+                  <span className="text-[10px] text-gray-400">Click to replace image</span>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center space-y-2">
+                  <div className="w-12 h-12 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center">
+                    <Upload className="w-6 h-6" />
+                  </div>
+                  <p className="text-xs font-bold text-gray-700">Click or Drag & Drop Payment Screenshot</p>
+                  <p className="text-[10px] text-gray-400">Supported formats: PNG, JPG, JPEG, WEBP (Max 10MB)</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Optional Note */}
+          <div className="space-y-1">
+            <label className="block text-xs font-bold text-gray-700">Additional Note (Optional)</label>
+            <textarea
+              rows="2"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Add any message or transaction ref number for Admin..."
+              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:border-brand-600 outline-hidden transition-all"
+            />
+          </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={submitting || calculatedTotal <= 0}
+            className="w-full py-3.5 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-700 hover:to-indigo-700 text-white font-bold rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all cursor-pointer disabled:opacity-50"
+          >
+            {submitting ? 'Uploading Proof & Submitting...' : `Submit Payment of ₹${calculatedTotal.toLocaleString('en-IN')} to Admin`}
+          </button>
+        </form>
+      )}
     </div>
   );
 };
