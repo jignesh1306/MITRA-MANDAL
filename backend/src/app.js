@@ -49,7 +49,8 @@ app.use(cookieParser());
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 mins
   max: 300,
-  message: 'Too many requests. Please try again later.'
+  message: 'Too many requests. Please try again later.',
+  skip: (req) => req.path === '/health' || req.originalUrl === '/api/health' || req.path === '/api/health'
 });
 app.use('/api', limiter);
 
@@ -70,8 +71,19 @@ app.use('/api/audit-logs', auditRoutes);
 app.use('/api/emi-submissions', emiSubmissionRoutes);
 app.use('/api/upload', uploadRoutes);
 
+// Public lightweight health check endpoints (no auth, no DB queries)
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'Backend is running'
+  });
+});
+
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', app: 'Mitra-Mandal Server' });
+  res.status(200).json({
+    status: 'ok',
+    message: 'Backend is running'
+  });
 });
 
 app.use(errorHandler);
