@@ -9,12 +9,20 @@ import { generateMemberWhatsAppMessage, openWhatsApp } from '../utils/whatsappHe
 
 export const MembersPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialStatus = searchParams.get('status') || 'ALL';
-
+  const statusParam = searchParams.get('status');
+  const [statusFilter, setStatusFilter] = useState(statusParam || 'ALL');
   const [members, setMembers] = useState([]);
-  const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // Sync statusFilter when URL changes
+  useEffect(() => {
+    if (statusParam) {
+      setStatusFilter(statusParam);
+    } else {
+      setStatusFilter('ALL');
+    }
+  }, [statusParam]);
 
   // Approval Modal State
   const [selectedMember, setSelectedMember] = useState(null);
@@ -166,16 +174,44 @@ export const MembersPage = () => {
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="relative w-full">
-        <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
-        <input
-          type="text"
-          placeholder="Search members..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-brand-600 outline-hidden shadow-xs"
-        />
+      {/* Search Bar & Status Filter Tabs */}
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
+          <input
+            type="text"
+            placeholder="Search members by name, phone or email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-brand-600 outline-hidden shadow-xs"
+          />
+        </div>
+
+        {/* Status Filter Tabs */}
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl text-xs font-bold shrink-0 overflow-x-auto">
+          {[
+            { id: 'ALL', label: 'All' },
+            { id: 'PENDING', label: 'Pending' },
+            { id: 'ACTIVE', label: 'Active' },
+            { id: 'DISABLED', label: 'Disabled' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => {
+                setStatusFilter(tab.id);
+                setSearchParams(tab.id === 'ALL' ? {} : { status: tab.id });
+              }}
+              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                statusFilter === tab.id
+                  ? 'bg-white text-brand-700 shadow-xs font-black'
+                  : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? (
