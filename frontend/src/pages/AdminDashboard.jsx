@@ -25,7 +25,12 @@ export const AdminDashboard = () => {
   useEffect(() => {
     api.get('/dashboard/admin-summary')
       .then(res => setData(res.data))
-      .catch(() => {})
+      .catch((err) => {
+        // Silently swallow 401 unauthenticated errors when logged out
+        if (err.response?.status !== 401) {
+          console.warn('Admin summary fetch error:', err.message);
+        }
+      })
       .finally(() => setLoading(false));
   }, []);
 

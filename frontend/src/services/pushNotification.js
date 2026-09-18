@@ -39,7 +39,6 @@ export const registerAndSubscribePush = async () => {
     }
 
     if (permission !== 'granted') {
-      console.log('Notification permission not granted.');
       return false;
     }
 
