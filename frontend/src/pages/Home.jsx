@@ -80,15 +80,6 @@ export const Home = () => {
 
             <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }}>
               <Link
-                to="/signup"
-                className="px-6 py-3 text-xs sm:text-sm font-bold text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-2xl border border-brand-200 shadow-xs transition-all"
-              >
-                Join Mitra-Mandal
-              </Link>
-            </motion.div>
-
-            <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }}>
-              <Link
                 to="/calculator"
                 className="px-6 py-3 text-xs sm:text-sm font-bold text-gray-800 bg-white hover:bg-gray-50 rounded-2xl border border-gray-200 shadow-xs flex items-center gap-2 transition-all"
               >
