@@ -66,7 +66,7 @@ export const generateMemberWhatsAppMessage = (member) => {
   // Total Due calculation (Fund due + Loan EMI due)
   const totalDue = fundDueAmount + loanDueAmount;
 
-  let message = `🙏 નમસ્તે, *${name}* ભાઈ/બહેન!\n\n` +
+  let message = `🙏 નમસ્તે, *${name}*!\n\n` +
     `આ મિત્ર-મંડળ તરફથી તમારો *${monthNameGujarati} ${currentYear}* નો નાણાકીય અહેવાલ છે.\n\n` +
     '━━━━━━━━━━━━━━━━━━\n' +
     '💰 *માસિક ફંડ ફાળો*\n' +
