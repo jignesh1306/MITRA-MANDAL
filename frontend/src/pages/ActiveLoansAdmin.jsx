@@ -215,18 +215,19 @@ export const ActiveLoansAdmin = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-1 gap-2">
-                  <div className="flex-1 max-w-[70%]">
+                <Link
+                  to={`/member/loans/${loan._id}`}
+                  className="group flex items-center justify-between pt-2.5 gap-3 border-t border-gray-100 hover:bg-brand-50/50 -mx-4 -mb-4 px-4 py-3 rounded-b-2xl transition-all cursor-pointer"
+                  title="View Loan Installment Schedule"
+                >
+                  <div className="flex-1">
                     <LoanProgress percent={isCompleted ? 100 : (summary.progressPercent || 0)} />
                   </div>
-                  <Link
-                    to={`/member/loans/${loan._id}`}
-                    className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-600 hover:text-brand-800 shrink-0"
-                  >
+                  <div className="inline-flex items-center gap-1 text-xs font-bold text-brand-600 group-hover:text-brand-700 bg-brand-50 group-hover:bg-brand-100 px-3 py-1.5 rounded-xl border border-brand-200 shrink-0 transition-all shadow-2xs">
                     <span>Installments</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
+                    <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                  </div>
+                </Link>
               </div>
             );
           })}

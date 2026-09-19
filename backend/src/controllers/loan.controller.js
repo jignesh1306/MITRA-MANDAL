@@ -26,7 +26,64 @@ export const getLoans = async (req, res, next) => {
       .populate('approvedBy', 'name')
       .sort({ createdAt: -1 });
 
-    res.json(list);
+    const loanIds = list.map(l => l._id);
+    const allInstallments = await LoanInstallment.find({ loanId: { $in: loanIds } }).sort({ installmentNumber: 1 });
+
+    const installmentsByLoanId = new Map();
+    for (const inst of allInstallments) {
+      const key = inst.loanId.toString();
+      if (!installmentsByLoanId.has(key)) {
+        installmentsByLoanId.set(key, []);
+      }
+      installmentsByLoanId.get(key).push(inst);
+    }
+
+    const enrichedLoans = list.map(loanDoc => {
+      const loan = loanDoc.toObject();
+      const installments = installmentsByLoanId.get(loan._id.toString()) || [];
+
+      let paidPrincipal = 0;
+      let paidInterest = 0;
+
+      for (const inst of installments) {
+        if (inst.status === 'PAID') {
+          paidPrincipal += (inst.principal || 0);
+          paidInterest += (inst.interest || 0);
+        }
+      }
+
+      if (loan.status === 'COMPLETED' && paidPrincipal === 0 && loan.principal > 0) {
+        paidPrincipal = loan.principal;
+        paidInterest = loan.totalInterest || 0;
+      }
+
+      const remainingPrincipal = Math.max(0, loan.principal - paidPrincipal);
+      const remainingInterest = Math.max(0, (loan.totalInterest || 0) - paidInterest);
+      const totalRepayment = loan.totalRepayment || (loan.principal + (loan.totalInterest || 0));
+      const remainingTotalRepayment = remainingPrincipal + remainingInterest;
+      const progressPercent = loan.status === 'COMPLETED'
+        ? 100
+        : (loan.principal > 0 ? Math.min(100, Math.round((paidPrincipal / loan.principal) * 100)) : 0);
+
+      return {
+        ...loan,
+        installments,
+        summary: {
+          originalPrincipal: loan.principal,
+          totalInterest: loan.totalInterest,
+          totalRepaymentWithInterest: totalRepayment,
+          paidPrincipal,
+          paidInterest,
+          totalPaidSoFar: paidPrincipal + paidInterest,
+          remainingPrincipal,
+          remainingInterest,
+          remainingTotalRepayment,
+          progressPercent
+        }
+      };
+    });
+
+    res.json(enrichedLoans);
   } catch (error) {
     next(error);
   }
@@ -54,11 +111,18 @@ export const getMyLoans = async (req, res, next) => {
         }
       }
 
+      if (loan.status === 'COMPLETED' && paidPrincipal === 0 && loan.principal > 0) {
+        paidPrincipal = loan.principal;
+        paidInterest = loan.totalInterest || 0;
+      }
+
       const remainingPrincipal = Math.max(0, loan.principal - paidPrincipal);
-      const remainingInterest = Math.max(0, loan.totalInterest - paidInterest);
-      const totalRepayment = loan.totalRepayment || (loan.principal + loan.totalInterest);
+      const remainingInterest = Math.max(0, (loan.totalInterest || 0) - paidInterest);
+      const totalRepayment = loan.totalRepayment || (loan.principal + (loan.totalInterest || 0));
       const remainingTotalRepayment = remainingPrincipal + remainingInterest;
-      const progressPercent = loan.principal > 0 ? Math.round((paidPrincipal / loan.principal) * 100) : 0;
+      const progressPercent = loan.status === 'COMPLETED'
+        ? 100
+        : (loan.principal > 0 ? Math.min(100, Math.round((paidPrincipal / loan.principal) * 100)) : 0);
 
       return {
         ...loan,
@@ -158,7 +222,9 @@ export const getLoanById = async (req, res, next) => {
 
     const remainingPrincipal = Math.max(0, loan.principal - paidAmount);
     const remainingInterest = Math.max(0, loan.totalInterest - interestPaid);
-    const progressPercent = loan.principal > 0 ? Math.round((paidAmount / loan.principal) * 100) : 0;
+    const progressPercent = loan.status === 'COMPLETED'
+      ? 100
+      : (loan.principal > 0 ? Math.min(100, Math.round((paidAmount / loan.principal) * 100)) : 0);
 
     res.json({
       loan,

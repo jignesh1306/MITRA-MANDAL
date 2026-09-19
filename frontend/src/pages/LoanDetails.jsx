@@ -47,7 +47,7 @@ export const LoanDetails = () => {
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
       <div>
-        <BackButton fallback={isAdmin ? "/admin/loans/active" : "/member/loans"} label="Back to Loans" />
+        <BackButton fallback={isAdmin ? "/admin/loans" : "/member/loans"} label="Back to Loans" />
       </div>
 
       {/* Header */}
