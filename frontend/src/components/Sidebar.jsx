@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { 
   Home, Users, Wallet, BadgeIndianRupee, TrendingUp, TrendingDown, 
   FileText, Settings, ShieldAlert, Bell, User
@@ -8,34 +9,35 @@ import {
 
 export const Sidebar = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   if (!user) return null;
 
   const isAdmin = user.role === 'ADMIN';
 
   const memberNav = [
-    { to: '/member', label: 'Dashboard', icon: Home, end: true },
-    { to: '/member/submit-emi', label: 'Submit EMI', icon: Wallet },
-    { to: '/member/contributions', label: 'My Fund', icon: Wallet },
-    { to: '/member/loans', label: 'My Loans', icon: BadgeIndianRupee },
-    { to: '/member/directory', label: 'Members', icon: Users },
-    { to: '/member/notifications', label: 'Notifications', icon: Bell },
-    { to: '/member/profile', label: 'Profile', icon: User }
+    { to: '/member', label: t('nav.dashboard'), icon: Home, end: true },
+    { to: '/member/submit-emi', label: t('nav.submitEmi'), icon: Wallet },
+    { to: '/member/contributions', label: t('nav.myFund'), icon: Wallet },
+    { to: '/member/loans', label: t('nav.myLoans'), icon: BadgeIndianRupee },
+    { to: '/member/directory', label: t('nav.members'), icon: Users },
+    { to: '/member/notifications', label: t('nav.notifications'), icon: Bell },
+    { to: '/member/profile', label: t('nav.profile'), icon: User }
   ];
 
   const adminNav = [
-    { to: '/admin', label: 'Dashboard', icon: Home, end: true },
-    { to: '/admin/notifications', label: 'Notifications', icon: Bell },
-    { to: '/admin/emi-submissions', label: 'EMI Submissions', icon: Wallet },
-    { to: '/admin/members', label: 'Members', icon: Users },
-    { to: '/admin/contributions', label: 'Contributions', icon: Wallet },
-    { to: '/admin/fund', label: 'Fund Ledger', icon: TrendingUp },
-    { to: '/admin/loan-requests', label: 'Loan Requests', icon: BadgeIndianRupee },
-    { to: '/admin/loans', label: 'Active Loans', icon: BadgeIndianRupee },
-    { to: '/admin/expenses', label: 'Expenses', icon: TrendingDown },
-    { to: '/admin/revenue', label: 'Revenue', icon: TrendingUp },
-    { to: '/admin/reports', label: 'Reports', icon: FileText },
-    { to: '/admin/settings', label: 'Settings', icon: Settings },
-    { to: '/admin/audit-logs', label: 'Audit Logs', icon: ShieldAlert }
+    { to: '/admin', label: t('nav.dashboard'), icon: Home, end: true },
+    { to: '/admin/notifications', label: t('nav.notifications'), icon: Bell },
+    { to: '/admin/emi-submissions', label: t('nav.emiSubmissions'), icon: Wallet },
+    { to: '/admin/members', label: t('nav.members'), icon: Users },
+    { to: '/admin/contributions', label: t('nav.contributions'), icon: Wallet },
+    { to: '/admin/fund', label: t('nav.fundLedger'), icon: TrendingUp },
+    { to: '/admin/loan-requests', label: t('nav.loanRequests'), icon: BadgeIndianRupee },
+    { to: '/admin/loans', label: t('nav.activeLoans'), icon: BadgeIndianRupee },
+    { to: '/admin/expenses', label: t('nav.expenses'), icon: TrendingDown },
+    { to: '/admin/revenue', label: t('nav.revenue'), icon: TrendingUp },
+    { to: '/admin/reports', label: t('nav.reports'), icon: FileText },
+    { to: '/admin/settings', label: t('nav.settings'), icon: Settings },
+    { to: '/admin/audit-logs', label: t('nav.auditLogs'), icon: ShieldAlert }
   ];
 
   const navItems = isAdmin ? adminNav : memberNav;
@@ -43,7 +45,7 @@ export const Sidebar = () => {
   return (
     <aside className="hidden md:flex flex-col w-64 border-r border-gray-200 bg-white min-h-[calc(100vh-4rem)] p-4 shadow-sm print:hidden">
       <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 px-3">
-        {isAdmin ? 'Admin Menu' : 'Member Menu'}
+        {isAdmin ? t('nav.adminMenu') : t('nav.memberMenu')}
       </div>
       <nav className="space-y-1">
         {navItems.map((item) => {

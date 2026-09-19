@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { formatCurrency, formatDate } from '../utils/formatters';
-import { TrendingUp, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { TrendingUp, ArrowUpRight, ArrowDownLeft, BadgeIndianRupee } from 'lucide-react';
 
 export const FundLedgerPage = () => {
   const [summary, setSummary] = useState(null);
@@ -35,7 +35,7 @@ export const FundLedgerPage = () => {
 
       {/* Breakdown Metrics Grid */}
       {summary && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <div className="bg-white p-4 rounded-2xl border border-gray-200">
             <span className="text-[11px] text-gray-500 font-semibold">Current Fund Balance</span>
             <div className="text-xl font-bold text-brand-600 mt-1">{formatCurrency(summary.currentBalance)}</div>
@@ -47,6 +47,10 @@ export const FundLedgerPage = () => {
           <div className="bg-white p-4 rounded-2xl border border-gray-200">
             <span className="text-[11px] text-gray-500 font-semibold">Loan Interest Income</span>
             <div className="text-xl font-bold text-amber-600 mt-1">{formatCurrency(summary.totalLoanInterest)}</div>
+          </div>
+          <div className="bg-white p-4 rounded-2xl border border-purple-200 bg-purple-50/20">
+            <span className="text-[11px] text-purple-700 font-semibold">Extra Interest / Penalty</span>
+            <div className="text-xl font-bold text-purple-700 mt-1">{formatCurrency(summary.totalExtraInterestPenalty || 0)}</div>
           </div>
           <div className="bg-white p-4 rounded-2xl border border-gray-200">
             <span className="text-[11px] text-gray-500 font-semibold">Total Expenses</span>
@@ -61,25 +65,49 @@ export const FundLedgerPage = () => {
           All Financial Transactions
         </div>
         <div className="divide-y divide-gray-100">
-          {transactions.map(t => (
-            <div key={t._id} className="p-4 flex items-center justify-between hover:bg-gray-50/50 text-xs">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-xl ${t.type === 'INCOME' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                  {t.type === 'INCOME' ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
+          {transactions.map(t => {
+            const isFine = t.category === 'FINE';
+            const isIncome = t.type === 'INCOME';
+            return (
+              <div key={t._id} className="p-4 flex items-center justify-between hover:bg-gray-50/50 text-xs">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-xl ${
+                    isFine 
+                      ? 'bg-purple-50 text-purple-600' 
+                      : isIncome 
+                        ? 'bg-emerald-50 text-emerald-600' 
+                        : 'bg-red-50 text-red-600'
+                  }`}>
+                    {isFine ? (
+                      <BadgeIndianRupee className="w-4 h-4" />
+                    ) : isIncome ? (
+                      <ArrowUpRight className="w-4 h-4" />
+                    ) : (
+                      <ArrowDownLeft className="w-4 h-4" />
+                    )}
+                  </div>
+                  <div>
+                    <div className="font-bold text-gray-900">
+                      {t.referenceId} • {isFine ? 'Extra Interest / Penalty' : t.category}
+                    </div>
+                    <p className="text-gray-500 text-[11px] mt-0.5">{t.description}</p>
+                  </div>
                 </div>
-                <div>
-                  <div className="font-bold text-gray-900">{t.referenceId} • {t.category}</div>
-                  <p className="text-gray-500 text-[11px] mt-0.5">{t.description}</p>
+                <div className="text-right">
+                  <div className={`font-bold text-sm ${
+                    isFine 
+                      ? 'text-purple-600' 
+                      : isIncome 
+                        ? 'text-emerald-600' 
+                        : 'text-red-600'
+                  }`}>
+                    {isIncome ? '+' : '-'}{formatCurrency(t.amount)}
+                  </div>
+                  <div className="text-[10px] text-gray-400 mt-0.5">{formatDate(t.date)}</div>
                 </div>
               </div>
-              <div className="text-right">
-                <div className={`font-bold text-sm ${t.type === 'INCOME' ? 'text-emerald-600' : 'text-red-600'}`}>
-                  {t.type === 'INCOME' ? '+' : '-'}{formatCurrency(t.amount)}
-                </div>
-                <div className="text-[10px] text-gray-400 mt-0.5">{formatDate(t.date)}</div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

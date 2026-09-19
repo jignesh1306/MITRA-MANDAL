@@ -3,6 +3,9 @@ import { LoanInstallment } from '../models/LoanInstallment.js';
 import { LoanRequest } from '../models/LoanRequest.js';
 import { Group } from '../models/Group.js';
 import { User } from '../models/User.js';
+import { Transaction } from '../models/Transaction.js';
+import { generateRefId } from '../services/refId.service.js';
+import { createAuditLog } from '../services/audit.service.js';
 import { 
   createLoanRequest, 
   approveLoanRequest, 
@@ -378,6 +381,14 @@ export const addExtraInterestPenalty = async (req, res, next) => {
     const member = await User.findById(memberId);
     if (!member) return res.status(404).json({ message: 'Member not found.' });
 
+    let targetLoanId = loanId;
+    if (!targetLoanId) {
+      const activeLoan = await Loan.findOne({ memberId, status: 'ACTIVE' });
+      if (activeLoan) {
+        targetLoanId = activeLoan._id;
+      }
+    }
+
     const refId = await generateRefId('FINE');
     const transaction = await Transaction.create({
       referenceId: refId,
@@ -386,10 +397,27 @@ export const addExtraInterestPenalty = async (req, res, next) => {
       category: 'FINE',
       amount: amountInPaise,
       memberId,
-      loanId: loanId || undefined,
+      loanId: targetLoanId || undefined,
       description: description || `Extra Interest / Penalty from ${member.name} (${refId})`,
       date: new Date(),
       createdBy: req.user._id
+    });
+
+    // Create Audit Log
+    await createAuditLog({
+      groupId: group._id,
+      userId: req.user._id,
+      action: 'PENALTY_RECORDED',
+      entityType: 'Transaction',
+      entityId: transaction._id.toString(),
+      newValue: { amount: amountInPaise, member: member.name, description }
+    });
+
+    // Notify the member
+    await createNotification({
+      userId: member._id,
+      title: 'દંડ / વધારાનું વ્યાજ નોંધાયેલ (Fine / Extra Interest)',
+      message: `તમારા ખાતામાં ₹${Number(amount).toLocaleString('en-IN')} નો દંડ/વધારાનું વ્યાજ ઉમેરવામાં આવેલ છે. કારણ: ${description || 'નિયમ મુજબ'}`
     });
 
     res.status(201).json({ 

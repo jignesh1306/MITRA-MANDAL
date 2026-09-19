@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
+import { useLanguage } from '../context/LanguageContext';
 import { StatusBadge } from '../components/StatusBadge';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { LoanProgress } from '../components/LoanProgress';
 import { formatCurrency } from '../utils/formatters';
-import { BadgeIndianRupee, ChevronRight, ArrowUpRight, Plus, CheckCircle2, ShieldCheck, Calendar, X } from 'lucide-react';
+import { BadgeIndianRupee, ChevronRight, ArrowUpRight, Plus, CheckCircle2, ShieldCheck, Calendar, X, Search } from 'lucide-react';
 
 export const ActiveLoansAdmin = () => {
+  const { t } = useLanguage();
   const [loans, setLoans] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL', 'ACTIVE', 'COMPLETED'
   const [showAddModal, setShowAddModal] = useState(false);
   const [showExtraInterestModal, setShowExtraInterestModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -79,19 +83,32 @@ export const ActiveLoansAdmin = () => {
 
   const handleAddExtraInterest = async (e) => {
     e.preventDefault();
-    if (!extraMemberId || !extraAmount) return;
+    if (!extraMemberId) {
+      alert('કૃપા કરીને સભ્ય પસંદ કરો (Please select a member).');
+      return;
+    }
+    if (!extraAmount || Number(extraAmount) <= 0) {
+      alert('કૃપા કરીને માન્ય રકમ દાખલ કરો (Please enter a valid amount).');
+      return;
+    }
+
+    const memberLoan = loans.find(l => (l.memberId?._id === extraMemberId || l.memberId === extraMemberId) && l.status === 'ACTIVE');
+
     setSubmitting(true);
     try {
       const res = await api.post('/loans/extra-interest', {
         memberId: extraMemberId,
         amount: Number(extraAmount),
-        description: extraDescription
+        description: extraDescription,
+        loanId: memberLoan?._id || undefined
       });
       alert(res.data.message || 'Extra Interest / Penalty added successfully!');
       setShowExtraInterestModal(false);
+      setExtraAmount('500');
+      setExtraDescription('Extra Interest / Penalty charge');
       fetchLoansAndMembers();
     } catch (err) {
-      alert(err.message || 'Failed to add extra interest/penalty.');
+      alert(err.response?.data?.message || err.message || 'Failed to add extra interest/penalty.');
     } finally {
       setSubmitting(false);
     }
@@ -100,7 +117,33 @@ export const ActiveLoansAdmin = () => {
   if (loading) return <div className="p-4 max-w-4xl mx-auto"><LoadingSkeleton count={3} /></div>;
 
   const activeLoansCount = loans.filter(l => l.status === 'ACTIVE').length;
+  const completedLoansCount = loans.filter(l => l.status === 'COMPLETED').length;
   const totalPrincipalDisbursed = loans.reduce((acc, l) => acc + (l.principal || 0), 0);
+
+  const filteredLoans = loans.filter(loan => {
+    // Status filter
+    if (statusFilter !== 'ALL' && loan.status !== statusFilter) {
+      return false;
+    }
+    // Search query filter
+    if (!search.trim()) return true;
+    const q = search.trim().toLowerCase();
+    const memberName = (loan.memberId?.name || '').toLowerCase();
+    const memberPhone = (loan.memberId?.phone || '').toLowerCase();
+    const principalStr = String(loan.principal || '');
+    const purpose = (loan.purpose || '').toLowerCase();
+    const status = (loan.status || '').toLowerCase();
+    const monthsStr = `${loan.months} months`;
+
+    return (
+      memberName.includes(q) ||
+      memberPhone.includes(q) ||
+      principalStr.includes(q) ||
+      purpose.includes(q) ||
+      status.includes(q) ||
+      monthsStr.includes(q)
+    );
+  });
 
   return (
     <div className="p-3 sm:p-5 max-w-4xl mx-auto space-y-3.5 pb-4">
@@ -129,7 +172,12 @@ export const ActiveLoansAdmin = () => {
 
           <button
             type="button"
-            onClick={() => setShowExtraInterestModal(true)}
+            onClick={() => {
+              if (!extraMemberId && members.length > 0) {
+                setExtraMemberId(members[0]._id);
+              }
+              setShowExtraInterestModal(true);
+            }}
             className="flex-1 min-w-[130px] px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -149,26 +197,96 @@ export const ActiveLoansAdmin = () => {
       {/* Vibrant Compact Metrics Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
         <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-700 text-white shadow-sm">
-          <span className="text-[10px] font-extrabold uppercase tracking-wider block opacity-90 truncate">Active Loans</span>
-          <span className="text-sm font-black mt-0.5 block">{activeLoansCount} Active</span>
+          <span className="text-[10px] font-extrabold uppercase tracking-wider block opacity-90 truncate">{t('metrics.activeLoans')}</span>
+          <span className="text-sm font-black mt-0.5 block">{activeLoansCount}</span>
         </div>
         <div className="p-3 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white shadow-sm">
-          <span className="text-[10px] font-extrabold uppercase tracking-wider block opacity-90 truncate">Total Disbursed</span>
+          <span className="text-[10px] font-extrabold uppercase tracking-wider block opacity-90 truncate">{t('metrics.principal')}</span>
           <span className="text-sm font-black mt-0.5 block">{formatCurrency(totalPrincipalDisbursed)}</span>
         </div>
         <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-800 text-white shadow-sm col-span-2 sm:col-span-1">
-          <span className="text-[10px] font-extrabold uppercase tracking-wider block opacity-90 truncate">Total Loans</span>
-          <span className="text-sm font-black mt-0.5 block">{loans.length} Loans Total</span>
+          <span className="text-[10px] font-extrabold uppercase tracking-wider block opacity-90 truncate">{t('loan.installmentsCount')}</span>
+          <span className="text-sm font-black mt-0.5 block">{loans.length}</span>
         </div>
       </div>
 
-      {loans.length === 0 ? (
-        <div className="p-6 text-center bg-white rounded-2xl border border-gray-200 text-gray-500 text-xs font-medium">
-          No loan records found.
+      {/* Search Bar & Quick Status Filter Tabs */}
+      <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-3" />
+          <input
+            type="text"
+            placeholder={t('loan.searchPlaceholder')}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-9 py-2 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-brand-600 focus:ring-1 focus:ring-brand-600 outline-hidden shadow-2xs transition-all"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-2 text-gray-400 hover:text-gray-600 p-0.5 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+              title="Clear search"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Status Filter Tabs */}
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl text-xs font-bold shrink-0 self-start sm:self-auto overflow-x-auto">
+          {[
+            { id: 'ALL', label: `${t('status.all')} (${loans.length})` },
+            { id: 'ACTIVE', label: `${t('status.active')} (${activeLoansCount})` },
+            { id: 'COMPLETED', label: `${t('status.completed')} (${completedLoansCount})` }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setStatusFilter(tab.id)}
+              className={`px-3 py-1.5 rounded-xl transition-all text-[11px] font-bold cursor-pointer ${
+                statusFilter === tab.id
+                  ? 'bg-white text-gray-900 shadow-2xs'
+                  : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {filteredLoans.length === 0 ? (
+        <div className="p-8 text-center bg-white rounded-2xl border border-gray-200 text-gray-500 text-xs font-medium space-y-2">
+          <p className="font-bold text-gray-700">
+            {loans.length === 0 ? 'No loan records found.' : 'No loans match your search criteria.'}
+          </p>
+          {(search || statusFilter !== 'ALL') && (
+            <div className="flex items-center justify-center gap-2 pt-1">
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold transition-all cursor-pointer"
+                >
+                  Clear search
+                </button>
+              )}
+              {statusFilter !== 'ALL' && (
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('ALL')}
+                  className="px-3 py-1.5 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold transition-all cursor-pointer"
+                >
+                  Show All Statuses
+                </button>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
-          {loans.map(loan => {
+          {filteredLoans.map(loan => {
             const summary = loan.summary || {};
             const isCompleted = loan.status === 'COMPLETED';
             const remainingP = isCompleted ? 0 : (summary.remainingPrincipal ?? loan.principal);
@@ -424,12 +542,25 @@ export const ActiveLoansAdmin = () => {
                   onChange={(e) => setExtraMemberId(e.target.value)}
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:bg-white focus:border-purple-600 outline-hidden"
                 >
+                  <option value="">-- Select Member --</option>
                   {members.map(m => (
                     <option key={m._id} value={m._id}>
                       {m.name} ({m.phone})
                     </option>
                   ))}
                 </select>
+                {(() => {
+                  const memberLoan = loans.find(l => (l.memberId?._id === extraMemberId || l.memberId === extraMemberId) && l.status === 'ACTIVE');
+                  if (memberLoan) {
+                    return (
+                      <div className="mt-2 p-2.5 rounded-xl bg-purple-50/80 border border-purple-200 text-purple-900 text-[11px] flex items-center justify-between font-bold">
+                        <span>ચાલુ લોન: {formatCurrency(memberLoan.principal)}</span>
+                        <span>બાકી મુદ્દલ: {formatCurrency(memberLoan.summary?.remainingPrincipal || memberLoan.principal)}</span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               {/* Extra Amount */}

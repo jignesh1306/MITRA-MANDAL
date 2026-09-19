@@ -16,6 +16,7 @@ const userSchema = new mongoose.Schema({
 
 // Allow the same phone number to have both an Admin account and a Member account
 userSchema.index({ phone: 1, role: 1 }, { unique: true });
+userSchema.index({ role: 1, status: 1 });
 
 userSchema.methods.matchPassword = async function(enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.passwordHash);

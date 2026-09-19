@@ -25,23 +25,72 @@ export const getMembers = async (req, res, next) => {
       ];
     }
 
-    const group = await Group.findOne();
+    const [group, users] = await Promise.all([
+      Group.findOne().lean(),
+      User.find(query).select('-passwordHash').sort({ createdAt: -1 }).lean()
+    ]);
+
     const fundSummary = group ? await getFundSummary(group._id) : { currentBalance: 0 };
     const currentMonth = new Date().getMonth() + 1;
     const currentYear = new Date().getFullYear();
 
-    const users = await User.find(query).select('-passwordHash').sort({ createdAt: -1 });
+    const memberIds = users.map(u => u._id);
 
-    const enrichedUsers = await Promise.all(users.map(async (uDoc) => {
-      const u = uDoc.toObject();
-
-      // Fetch current month contribution
-      const currentContribution = await Contribution.findOne({
-        memberId: u._id,
+    // Batch query contributions, active loans, and penalty/extra interest transactions in parallel
+    const [contributions, activeLoans, allFines] = await Promise.all([
+      Contribution.find({
+        memberId: { $in: memberIds },
         month: currentMonth,
         year: currentYear
-      });
+      }).lean(),
+      Loan.find({
+        memberId: { $in: memberIds },
+        status: 'ACTIVE'
+      }).lean(),
+      Transaction.find({
+        memberId: { $in: memberIds },
+        category: 'FINE'
+      }).select('memberId amount').lean()
+    ]);
 
+    // Map fines by memberId
+    const finesByMemberId = new Map();
+    for (const f of allFines) {
+      const key = f.memberId.toString();
+      finesByMemberId.set(key, (finesByMemberId.get(key) || 0) + (f.amount || 0));
+    }
+
+    // Map contributions by memberId
+    const contribMap = new Map();
+    for (const c of contributions) {
+      contribMap.set(c.memberId.toString(), c);
+    }
+
+    // Map active loans by memberId
+    const loanMap = new Map();
+    const activeLoanIds = [];
+    for (const l of activeLoans) {
+      loanMap.set(l.memberId.toString(), l);
+      activeLoanIds.push(l._id);
+    }
+
+    // Batch query installments for all active loans in 1 fast query
+    const allInstallments = activeLoanIds.length > 0
+      ? await LoanInstallment.find({ loanId: { $in: activeLoanIds } }).sort({ installmentNumber: 1 }).lean()
+      : [];
+
+    // Group installments by loanId
+    const installmentsByLoanId = new Map();
+    for (const inst of allInstallments) {
+      const key = inst.loanId.toString();
+      if (!installmentsByLoanId.has(key)) {
+        installmentsByLoanId.set(key, []);
+      }
+      installmentsByLoanId.get(key).push(inst);
+    }
+
+    const enrichedUsers = users.map((u) => {
+      const currentContribution = contribMap.get(u._id.toString());
       const monthlyContributionAmount = (u.monthlyContribution && u.monthlyContribution > 0)
         ? u.monthlyContribution
         : (group?.monthlyContribution || 200000);
@@ -54,20 +103,19 @@ export const getMembers = async (req, res, next) => {
         paidAmount: currentContribution?.status === 'PAID' ? currentContribution.amount : 0
       };
 
-      // Fetch active loan
-      const activeLoan = await Loan.findOne({ memberId: u._id, status: 'ACTIVE' });
-      
+      const activeLoan = loanMap.get(u._id.toString());
       let loanSummary = null;
+
       if (activeLoan) {
-        const installments = await LoanInstallment.find({ loanId: activeLoan._id }).sort({ installmentNumber: 1 });
+        const installments = installmentsByLoanId.get(activeLoan._id.toString()) || [];
         let paidP = 0;
         let paidI = 0;
         let nextDueInstallment = null;
 
         for (const inst of installments) {
           if (inst.status === 'PAID') {
-            paidP += inst.principal;
-            paidI += inst.interest;
+            paidP += (inst.principal || 0);
+            paidI += (inst.interest || 0);
           } else if (!nextDueInstallment) {
             nextDueInstallment = inst;
           }
@@ -97,9 +145,10 @@ export const getMembers = async (req, res, next) => {
         ...u,
         groupFundBalance: fundSummary.currentBalance || 0,
         currentContribution: contributionInfo,
-        loanSummary: loanSummary || { hasActiveLoan: false }
+        loanSummary: loanSummary || { hasActiveLoan: false },
+        totalExtraInterestPenalty: finesByMemberId.get(u._id.toString()) || 0
       };
-    }));
+    });
 
     res.json(enrichedUsers);
   } catch (error) {
@@ -123,6 +172,13 @@ export const getMemberById = async (req, res, next) => {
     for (const c of contributions) {
       if (c.status === 'PAID') totalPaidContributions += c.amount;
       else pendingContributions += c.amount;
+    }
+
+    let totalExtraInterestPenalty = 0;
+    for (const t of transactions) {
+      if (t.category === 'FINE') {
+        totalExtraInterestPenalty += (t.amount || 0);
+      }
     }
 
     const enrichedLoans = await Promise.all(loans.map(async (loanDoc) => {
@@ -187,6 +243,7 @@ export const getMemberById = async (req, res, next) => {
       summary: {
         totalPaidContributions,
         pendingContributions,
+        totalExtraInterestPenalty,
         totalLoans: loans.length,
         activeLoans: loans.filter(l => l.status === 'ACTIVE').length
       },

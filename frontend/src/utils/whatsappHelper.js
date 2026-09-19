@@ -79,6 +79,14 @@ export const generateMemberWhatsAppMessage = (member) => {
     message += `${loanSection}\n`;
   }
 
+  const extraPenalty = Math.round((member.totalExtraInterestPenalty || 0) / 100);
+  if (extraPenalty > 0) {
+    message += '━━━━━━━━━━━━━━━━━━\n' +
+      '⚡ *વધારાનું વ્યાજ / દંડ (Penalty)*\n' +
+      '━━━━━━━━━━━━━━━━━━\n' +
+      `📌 નોંધાયેલ/ચૂકવેલ: ${formatINR(extraPenalty)}\n\n`;
+  }
+
   message += '━━━━━━━━━━━━━━━━━━\n' +
     '📊 *ગ્રુપ ફંડ સ્થિતિ*\n' +
     '━━━━━━━━━━━━━━━━━━\n' +

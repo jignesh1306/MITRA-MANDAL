@@ -105,7 +105,7 @@ export const MemberDetailViewPage = () => {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100 flex items-center justify-between">
             <div>
               <span className="text-xs font-semibold text-emerald-800">Total Contributions Paid</span>
@@ -127,6 +127,18 @@ export const MemberDetailViewPage = () => {
             </div>
             <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
               <AlertCircle className="w-5 h-5" />
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-purple-50/60 border border-purple-100 flex items-center justify-between">
+            <div>
+              <span className="text-xs font-semibold text-purple-800">Extra Interest / Penalty</span>
+              <div className="text-2xl font-bold text-purple-700 mt-1">
+                {formatCurrency(summary?.totalExtraInterestPenalty || 0)}
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
+              <BadgeIndianRupee className="w-5 h-5" />
             </div>
           </div>
         </div>

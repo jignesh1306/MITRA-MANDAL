@@ -18,4 +18,7 @@ const loanRequestSchema = new mongoose.Schema({
   timestamps: true
 });
 
+loanRequestSchema.index({ status: 1 });
+loanRequestSchema.index({ memberId: 1, status: 1 });
+
 export const LoanRequest = mongoose.model('LoanRequest', loanRequestSchema);

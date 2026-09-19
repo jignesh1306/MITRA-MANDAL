@@ -23,4 +23,8 @@ const loanSchema = new mongoose.Schema({
   timestamps: true
 });
 
+loanSchema.index({ memberId: 1, status: 1 });
+loanSchema.index({ status: 1 });
+loanSchema.index({ createdAt: -1 });
+
 export const Loan = mongoose.model('Loan', loanSchema);

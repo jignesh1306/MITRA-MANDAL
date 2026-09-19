@@ -32,4 +32,7 @@ const emiSubmissionSchema = new mongoose.Schema({
   timestamps: true
 });
 
+emiSubmissionSchema.index({ memberId: 1, month: 1, year: 1, status: 1 });
+emiSubmissionSchema.index({ status: 1 });
+
 export const EMISubmission = mongoose.model('EMISubmission', emiSubmissionSchema);

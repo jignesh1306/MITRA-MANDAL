@@ -15,12 +15,15 @@ import {
   User, 
   Phone, 
   FileText, 
-  ShieldCheck 
+  ShieldCheck,
+  Search,
+  X
 } from 'lucide-react';
 
 export const LoanRequestsAdmin = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('PENDING'); // 'PENDING', 'APPROVED', 'REJECTED', 'ALL'
 
   // Modal State for Admin Loan Approval & Transfer Screenshot Upload
@@ -119,6 +122,17 @@ export const LoanRequestsAdmin = () => {
 
   const pendingCount = requests.filter(r => r.status === 'PENDING').length;
 
+  const filteredRequests = requests.filter(r => {
+    if (!search.trim()) return true;
+    const q = search.trim().toLowerCase();
+    const name = (r.memberId?.name || '').toLowerCase();
+    const phone = (r.memberId?.phone || '').toLowerCase();
+    const amountStr = String(r.amount || '');
+    const purpose = (r.purpose || '').toLowerCase();
+    const note = (r.note || '').toLowerCase();
+    return name.includes(q) || phone.includes(q) || amountStr.includes(q) || purpose.includes(q) || note.includes(q);
+  });
+
   return (
     <div className="p-3 sm:p-5 max-w-4xl mx-auto space-y-3.5 pb-4">
       {/* Compact Header Bar */}
@@ -169,15 +183,50 @@ export const LoanRequestsAdmin = () => {
         </div>
       </div>
 
+      {/* Search Bar */}
+      <div className="relative">
+        <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-3" />
+        <input
+          type="text"
+          placeholder="Search applications by member name, phone or amount..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full pl-10 pr-9 py-2 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-amber-600 focus:ring-1 focus:ring-amber-600 outline-hidden shadow-2xs transition-all"
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch('')}
+            className="absolute right-3 top-2 text-gray-400 hover:text-gray-600 p-0.5 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+            title="Clear search"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
       {loading ? (
         <LoadingSkeleton count={3} />
-      ) : requests.length === 0 ? (
-        <div className="p-6 text-center bg-white rounded-2xl border border-gray-200 text-gray-500 text-xs font-medium">
-          No loan applications found matching status "{statusFilter}".
+      ) : filteredRequests.length === 0 ? (
+        <div className="p-8 text-center bg-white rounded-2xl border border-gray-200 text-gray-500 text-xs font-medium space-y-2">
+          <p className="font-bold text-gray-700">
+            {requests.length === 0 
+              ? `No loan applications found matching status "${statusFilter}".` 
+              : 'No loan applications match your search.'}
+          </p>
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="mt-1 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold transition-all cursor-pointer inline-block"
+            >
+              Clear search
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
-          {requests.map((r) => (
+          {filteredRequests.map((r) => (
             <div key={r._id} className="p-4 rounded-2xl bg-white border border-gray-200 shadow-xs space-y-3">
               <div className="flex justify-between items-start gap-2">
                 <div>

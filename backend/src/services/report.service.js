@@ -13,7 +13,7 @@ export const getFundReport = async (groupId, startDate, endDate) => {
     if (endDate) query.date.$lte = new Date(endDate);
   }
 
-  const transactions = await Transaction.find(query).sort({ date: 1 });
+  const transactions = await Transaction.find(query).populate('memberId', 'name email phone').sort({ date: 1 });
   const loans = await Loan.find(groupId ? { groupId } : {});
   
   let totalIncome = 0;
@@ -58,6 +58,16 @@ export const getFundReport = async (groupId, startDate, endDate) => {
 export const getContributionReport = async (groupId, year) => {
   const members = await GroupMember.find(groupId ? { groupId } : {}).populate('userId', 'name email phone');
   const contributions = await Contribution.find({ ...(groupId && { groupId }), ...(year && { year }) });
+  
+  const fineQuery = { category: 'FINE' };
+  if (groupId) fineQuery.groupId = groupId;
+  if (year) {
+    fineQuery.date = {
+      $gte: new Date(year, 0, 1),
+      $lte: new Date(year, 11, 31, 23, 59, 59)
+    };
+  }
+  const fines = await Transaction.find(fineQuery);
 
   const memberMap = {};
   for (const m of members) {
@@ -68,7 +78,8 @@ export const getContributionReport = async (groupId, year) => {
       email: m.userId.email,
       phone: m.userId.phone,
       months: Array(12).fill('PENDING'),
-      totalPaid: 0
+      totalPaid: 0,
+      totalPenaltyPaid: 0
     };
   }
 
@@ -79,6 +90,13 @@ export const getContributionReport = async (groupId, year) => {
       if (c.status === 'PAID') {
         memberMap[mId].totalPaid += c.amount;
       }
+    }
+  }
+
+  for (const f of fines) {
+    const mId = f.memberId?.toString();
+    if (mId && memberMap[mId]) {
+      memberMap[mId].totalPenaltyPaid += f.amount;
     }
   }
 

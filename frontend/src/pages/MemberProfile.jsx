@@ -2,11 +2,14 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import { LanguageToggle } from '../components/LanguageToggle';
 import { formatDate } from '../utils/formatters';
-import { Phone, Mail, Calendar, LogOut, ShieldCheck, Sparkles, UserCheck } from 'lucide-react';
+import { Phone, Mail, Calendar, LogOut, ShieldCheck, Sparkles, UserCheck, Languages } from 'lucide-react';
 
 export const MemberProfile = () => {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -40,7 +43,7 @@ export const MemberProfile = () => {
             </h1>
             <span className="inline-flex items-center gap-1 px-3 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[11px] font-bold">
               <UserCheck className="w-3 h-3 text-brand-600" />
-              {user.role === 'ADMIN' ? 'Group Admin' : 'Group Member'}
+              {user.role === 'ADMIN' ? t('profile.groupAdmin') : t('profile.groupMember')}
             </span>
           </div>
         </div>
@@ -55,9 +58,9 @@ export const MemberProfile = () => {
               <Phone className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Mobile Number</span>
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">{t('profile.mobileNumber')}</span>
               <p className="text-xs sm:text-sm font-black text-gray-900 tracking-wide mt-0.5 truncate">
-                {user.phone || 'Not provided'}
+                {user.phone || t('profile.notProvided')}
               </p>
             </div>
           </div>
@@ -68,9 +71,9 @@ export const MemberProfile = () => {
               <Mail className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Email Address</span>
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">{t('profile.emailAddress')}</span>
               <p className="text-xs sm:text-sm font-black text-gray-900 tracking-wide mt-0.5 truncate">
-                {user.email || 'Not provided'}
+                {user.email || t('profile.notProvided')}
               </p>
             </div>
           </div>
@@ -81,12 +84,19 @@ export const MemberProfile = () => {
               <Calendar className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Joining Date</span>
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">{t('profile.joiningDate')}</span>
               <p className="text-xs sm:text-sm font-black text-gray-900 tracking-wide mt-0.5 truncate">
                 {formatDate(user.joiningDate || user.createdAt)}
               </p>
             </div>
           </div>
+        </div>
+
+        <div className="h-px bg-gradient-to-r from-transparent via-gray-100 to-transparent" />
+
+        {/* Language Switcher Section */}
+        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+          <LanguageToggle variant="default" />
         </div>
 
         {/* Vibrant Red Logout Button */}
@@ -99,7 +109,7 @@ export const MemberProfile = () => {
             className="w-full py-3.5 px-5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-lg shadow-red-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
-            <span>Logout</span>
+            <span>{t('nav.logout')}</span>
           </motion.button>
         </div>
       </motion.div>

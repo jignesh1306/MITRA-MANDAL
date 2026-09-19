@@ -7,6 +7,7 @@ export const getFundSummary = async (groupId) => {
   let totalExpense = 0;
   let totalContributions = 0;
   let totalLoanInterest = 0;
+  let totalExtraInterestPenalty = 0;
   let totalOtherRevenue = 0;
   let totalLoanRepaymentsPrincipal = 0;
   let totalLoansGiven = 0;
@@ -21,6 +22,8 @@ export const getFundSummary = async (groupId) => {
         totalLoanInterest += t.amount;
       } else if (t.category === 'LOAN_REPAYMENT_PRINCIPAL' || t.category === 'LOAN_REPAYMENT') {
         totalLoanRepaymentsPrincipal += t.amount;
+      } else if (t.category === 'FINE') {
+        totalExtraInterestPenalty += t.amount;
       } else {
         totalOtherRevenue += t.amount;
       }
@@ -42,6 +45,7 @@ export const getFundSummary = async (groupId) => {
     totalExpense,
     totalContributions,
     totalLoanInterest,
+    totalExtraInterestPenalty,
     totalOtherRevenue,
     totalLoanRepaymentsPrincipal,
     totalLoansGiven,

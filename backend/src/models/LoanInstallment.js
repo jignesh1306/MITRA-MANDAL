@@ -20,5 +20,8 @@ const loanInstallmentSchema = new mongoose.Schema({
 });
 
 loanInstallmentSchema.index({ loanId: 1, installmentNumber: 1 }, { unique: true });
+loanInstallmentSchema.index({ loanId: 1, status: 1 });
+loanInstallmentSchema.index({ status: 1 });
+loanInstallmentSchema.index({ dueDate: 1 });
 
 export const LoanInstallment = mongoose.model('LoanInstallment', loanInstallmentSchema);

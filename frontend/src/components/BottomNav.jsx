@@ -2,10 +2,12 @@ import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Home, Wallet, BadgeIndianRupee, User, Users, Settings } from 'lucide-react';
 
 export const BottomNav = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const location = useLocation();
 
   if (!user) return null;
@@ -13,19 +15,19 @@ export const BottomNav = () => {
   const isAdmin = user.role === 'ADMIN';
 
   const memberLinks = [
-    { to: '/member', label: 'Home', icon: Home, end: true },
-    { to: '/member/contributions', label: 'Fund', icon: Wallet },
-    { to: '/member/loans', label: 'Loans', icon: BadgeIndianRupee },
-    { to: '/member/directory', label: 'Members', icon: Users },
-    { to: '/member/profile', label: 'Profile', icon: User }
+    { to: '/member', label: t('nav.home'), icon: Home, end: true },
+    { to: '/member/contributions', label: t('nav.myFund'), icon: Wallet },
+    { to: '/member/loans', label: t('loan.title'), icon: BadgeIndianRupee },
+    { to: '/member/directory', label: t('nav.members'), icon: Users },
+    { to: '/member/profile', label: t('nav.profile'), icon: User }
   ];
 
   const adminLinks = [
-    { to: '/admin', label: 'Dashboard', icon: Home, end: true },
-    { to: '/admin/members', label: 'Members', icon: Users },
-    { to: '/admin/contributions', label: 'Fund', icon: Wallet },
-    { to: '/admin/loans', label: 'Loans', icon: BadgeIndianRupee },
-    { to: '/admin/settings', label: 'Settings', icon: Settings }
+    { to: '/admin', label: t('nav.dashboard'), icon: Home, end: true },
+    { to: '/admin/members', label: t('nav.members'), icon: Users },
+    { to: '/admin/contributions', label: t('nav.contributions'), icon: Wallet },
+    { to: '/admin/loans', label: t('loan.title'), icon: BadgeIndianRupee },
+    { to: '/admin/settings', label: t('nav.settings'), icon: Settings }
   ];
 
   const links = isAdmin ? adminLinks : memberLinks;

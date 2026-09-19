@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import { LanguageToggle } from '../components/LanguageToggle';
 import api from '../services/api';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { 
@@ -9,11 +11,13 @@ import {
   Building2, 
   Wallet, 
   BadgeIndianRupee, 
-  LogOut 
+  LogOut,
+  Languages
 } from 'lucide-react';
 
 export const SettingsPage = () => {
   const { logout } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -61,9 +65,14 @@ export const SettingsPage = () => {
       {success && (
         <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          <span>{success}</span>
+          <span>{t('settings.savedSuccess')}</span>
         </div>
       )}
+
+      {/* LANGUAGE PREFERENCE MODULE */}
+      <div className="bg-white p-4 sm:p-6 rounded-3xl border border-gray-200 shadow-sm">
+        <LanguageToggle variant="default" />
+      </div>
 
       {/* UNIFIED CONTAINER FOR ALL SETTINGS MODULES */}
       <form onSubmit={handleSubmit} className="bg-white p-4 sm:p-6 rounded-3xl border border-gray-200 shadow-md space-y-6">
@@ -74,11 +83,11 @@ export const SettingsPage = () => {
             <div className="p-1.5 bg-amber-500 text-white rounded-lg shadow-xs">
               <Building2 className="w-4 h-4" />
             </div>
-            <h3 className="text-xs font-extrabold text-amber-900 uppercase tracking-wider">Group Identity & Information</h3>
+            <h3 className="text-xs font-extrabold text-amber-900 uppercase tracking-wider">{t('settings.groupIdentity')}</h3>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-bold text-gray-700 mb-1">Group Name</label>
+              <label className="block text-[11px] font-bold text-gray-700 mb-1">{t('settings.groupName')}</label>
               <input
                 type="text"
                 required
@@ -88,7 +97,7 @@ export const SettingsPage = () => {
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-gray-700 mb-1">Group Description / Note</label>
+              <label className="block text-[11px] font-bold text-gray-700 mb-1">{t('settings.groupDescription')}</label>
               <input
                 type="text"
                 value={formData.description || ''}
@@ -106,10 +115,10 @@ export const SettingsPage = () => {
             <div className="p-1.5 bg-emerald-500 text-white rounded-lg shadow-xs">
               <Wallet className="w-4 h-4" />
             </div>
-            <h3 className="text-xs font-extrabold text-emerald-900 uppercase tracking-wider">Monthly Contribution Parameters</h3>
+            <h3 className="text-xs font-extrabold text-emerald-900 uppercase tracking-wider">{t('settings.contributionRules')}</h3>
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-gray-700 mb-1">Default Regular Member EMI Amount (in ₹)</label>
+            <label className="block text-[11px] font-bold text-gray-700 mb-1">{t('settings.monthlyAmount')}</label>
             <div className="relative">
               <span className="absolute left-3 top-2 text-xs font-extrabold text-emerald-600">₹</span>
               <input
@@ -122,7 +131,6 @@ export const SettingsPage = () => {
                 className="w-full pl-7 pr-3 py-2 bg-white border border-emerald-200 rounded-xl text-xs font-bold text-gray-900 focus:border-emerald-500 outline-hidden transition-all shadow-2xs"
               />
             </div>
-            <span className="text-[10px] font-medium text-emerald-700 mt-1.5 block">This amount is automatically billed to every active group member on the 1st of each month.</span>
           </div>
         </div>
 
@@ -132,12 +140,12 @@ export const SettingsPage = () => {
             <div className="p-1.5 bg-violet-500 text-white rounded-lg shadow-xs">
               <BadgeIndianRupee className="w-4 h-4" />
             </div>
-            <h3 className="text-xs font-extrabold text-violet-900 uppercase tracking-wider">Loan Interest & Rules Configuration</h3>
+            <h3 className="text-xs font-extrabold text-violet-900 uppercase tracking-wider">{t('settings.loanRules')}</h3>
           </div>
           
           <div className="space-y-3">
             <div>
-              <label className="block text-[11px] font-bold text-gray-700 mb-1">Default Monthly Interest Rate (%)</label>
+              <label className="block text-[11px] font-bold text-gray-700 mb-1">{t('settings.interestRate')}</label>
               <div className="grid grid-cols-4 gap-2">
                 {[0.5, 1.0, 1.5, 2.0].map((rate) => (
                   <button
@@ -157,7 +165,7 @@ export const SettingsPage = () => {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-gray-700 mb-1">Interest Calculation Formula</label>
+              <label className="block text-[11px] font-bold text-gray-700 mb-1">{t('settings.interestType')}</label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -168,7 +176,7 @@ export const SettingsPage = () => {
                       : 'bg-white border-violet-200 text-violet-900 hover:bg-violet-50'
                   }`}
                 >
-                  <div className="font-black">Monthly Reducing Balance</div>
+                  <div className="font-black">{t('settings.reducing')}</div>
                   <div className={`text-[10px] mt-0.5 ${formData.interestType === 'REDUCING' ? 'text-violet-100' : 'text-gray-500'}`}>
                     Interest charged on remaining principal only.
                   </div>
@@ -183,7 +191,7 @@ export const SettingsPage = () => {
                       : 'bg-white border-violet-200 text-violet-900 hover:bg-violet-50'
                   }`}
                 >
-                  <div className="font-black">Flat Interest Rate</div>
+                  <div className="font-black">{t('settings.flat')}</div>
                   <div className={`text-[10px] mt-0.5 ${formData.interestType === 'FLAT' ? 'text-violet-100' : 'text-gray-500'}`}>
                     Fixed interest calculated on initial principal.
                   </div>
@@ -201,7 +209,7 @@ export const SettingsPage = () => {
             className="w-full py-3.5 text-xs font-black uppercase tracking-wider text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
-            {saving ? 'Saving Settings...' : 'Save All Settings'}
+            {saving ? t('actions.saving') : t('settings.saveSettings')}
           </button>
         </div>
       </form>
@@ -209,7 +217,7 @@ export const SettingsPage = () => {
       {/* ADMIN LOGOUT SECTION */}
       <div className="bg-rose-500/10 p-4 rounded-3xl border border-rose-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>
-          <h4 className="text-xs font-black text-rose-950 uppercase tracking-wider">Log Out Admin Account</h4>
+          <h4 className="text-xs font-black text-rose-950 uppercase tracking-wider">{t('nav.logout')}</h4>
           <p className="text-[11px] font-semibold text-rose-700">End your current session safely and return to the login screen.</p>
         </div>
         <button
@@ -218,7 +226,7 @@ export const SettingsPage = () => {
           className="w-full sm:w-auto px-5 py-2.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-black rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
         >
           <LogOut className="w-4 h-4" />
-          Log Out Admin
+          {t('nav.logout')}
         </button>
       </div>
     </div>

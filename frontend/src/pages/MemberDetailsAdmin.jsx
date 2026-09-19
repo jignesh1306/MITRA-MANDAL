@@ -67,6 +67,7 @@ export const MemberDetailsAdmin = () => {
                 phone: user.phone,
                 currentContribution: data.currentContribution,
                 groupFundBalance: data.groupFundBalance,
+                totalExtraInterestPenalty: summary.totalExtraInterestPenalty || 0,
                 loanSummary: activeLoan ? {
                   hasActiveLoan: true,
                   principal: activeLoan.principal,
@@ -89,7 +90,7 @@ export const MemberDetailsAdmin = () => {
       </div>
 
       {/* Minimal Compact Summary Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-white">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 text-white">
         <div className="p-3 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 shadow-xs">
           <span className="text-[9px] font-extrabold text-emerald-100 uppercase tracking-wider block">Total Contributions</span>
           <div className="text-base font-black mt-0.5">{formatCurrency(summary.totalPaidContributions)}</div>
@@ -100,13 +101,18 @@ export const MemberDetailsAdmin = () => {
           <div className="text-base font-black mt-0.5">{formatCurrency(summary.pendingContributions)}</div>
         </div>
 
+        <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-600 to-fuchsia-700 shadow-xs">
+          <span className="text-[9px] font-extrabold text-purple-100 uppercase tracking-wider block">Extra Interest / Penalty</span>
+          <div className="text-base font-black mt-0.5">{formatCurrency(summary.totalExtraInterestPenalty || 0)}</div>
+        </div>
+
         <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 shadow-xs">
           <span className="text-[9px] font-extrabold text-blue-100 uppercase tracking-wider block">Total Loans</span>
           <div className="text-base font-black mt-0.5">{summary.totalLoans} Loans</div>
         </div>
 
-        <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-900 shadow-xs">
-          <span className="text-[9px] font-extrabold text-purple-100 uppercase tracking-wider block">Active Loans</span>
+        <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-700 to-slate-900 shadow-xs col-span-2 sm:col-span-1">
+          <span className="text-[9px] font-extrabold text-indigo-200 uppercase tracking-wider block">Active Loans</span>
           <div className="text-base font-black mt-0.5">{summary.activeLoans} Active</div>
         </div>
       </div>
@@ -127,17 +133,28 @@ export const MemberDetailsAdmin = () => {
           <div className="space-y-2">
             {transactions.map(t => {
               const isIncome = t.type === 'INCOME';
+              const isFine = t.category === 'FINE';
               return (
                 <div key={t._id} className="p-3 rounded-xl bg-gray-50/80 border border-gray-100 flex items-center justify-between gap-2 text-xs">
                   <div className="flex items-center gap-2.5">
-                    <div className={`p-2 rounded-lg ${isIncome ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                    <div className={`p-2 rounded-lg ${
+                      isFine
+                        ? 'bg-purple-100 text-purple-800'
+                        : isIncome 
+                          ? 'bg-emerald-100 text-emerald-800' 
+                          : 'bg-rose-100 text-rose-800'
+                    }`}>
                       {isIncome ? <ArrowDownLeft className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5">
                         <span className="font-bold text-gray-900">{t.referenceId}</span>
-                        <span className="px-1.5 py-0.2 bg-gray-200 text-gray-700 text-[9px] font-bold rounded uppercase">
-                          {t.category ? t.category.replace(/_/g, ' ') : t.type}
+                        <span className={`px-1.5 py-0.2 text-[9px] font-bold rounded uppercase ${
+                          isFine 
+                            ? 'bg-purple-100 text-purple-800 border border-purple-200' 
+                            : 'bg-gray-200 text-gray-700'
+                        }`}>
+                          {isFine ? 'Extra Interest / Penalty' : (t.category ? t.category.replace(/_/g, ' ') : t.type)}
                         </span>
                       </div>
                       <p className="text-[11px] text-gray-600">{t.description}</p>
@@ -146,7 +163,13 @@ export const MemberDetailsAdmin = () => {
                   </div>
 
                   <div className="text-right">
-                    <span className={`text-xs font-black ${isIncome ? 'text-emerald-700' : 'text-rose-700'}`}>
+                    <span className={`text-xs font-black ${
+                      isFine 
+                        ? 'text-purple-700' 
+                        : isIncome 
+                          ? 'text-emerald-700' 
+                          : 'text-rose-700'
+                    }`}>
                       {isIncome ? '+' : '-'}{formatCurrency(t.amount)}
                     </span>
                   </div>

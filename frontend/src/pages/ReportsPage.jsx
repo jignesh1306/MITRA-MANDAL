@@ -33,6 +33,7 @@ export const ReportsPage = () => {
     csvContent += `Total Regular EMI Collected,${(reportData.totalRegularEmi || 0) / 100}\n`;
     csvContent += `Total Loan EMI Principal Collected,${(reportData.totalLoanEmi || 0) / 100}\n`;
     csvContent += `Total Interest Collected,${(reportData.totalInterest || 0) / 100}\n`;
+    csvContent += `Total Extra Interest / Penalty Collected,${(reportData.totalExtraInterestPenalty || 0) / 100}\n`;
     csvContent += `Final Total Current Amount in Bank,${(reportData.totalBankBalance || 0) / 100}\n`;
 
     const encodedUri = encodeURI(csvContent);

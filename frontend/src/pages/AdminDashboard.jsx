@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
+import { useLanguage } from '../context/LanguageContext';
 import { MoneyCard } from '../components/MoneyCard';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { formatCurrency } from '../utils/formatters';
@@ -19,6 +20,7 @@ import {
 } from 'lucide-react';
 
 export const AdminDashboard = () => {
+  const { t } = useLanguage();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -55,14 +57,14 @@ export const AdminDashboard = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-gray-900">Admin Control Center</h1>
+            <h1 className="text-2xl font-black text-gray-900">{t('dashboard.adminControlCenter')}</h1>
             {totalPendingActions > 0 && (
               <span className="px-2.5 py-0.5 bg-amber-500 text-white font-black text-xs rounded-full">
-                {totalPendingActions} Action{totalPendingActions === 1 ? '' : 's'} Required
+                {totalPendingActions} {t('dashboard.actionsRequired')}
               </span>
             )}
           </div>
-          <p className="text-xs text-gray-500 mt-0.5">Comprehensive management of member requests, EMI proof approvals, loan distributions, and group funds.</p>
+          <p className="text-xs text-gray-500 mt-0.5">{t('dashboard.adminSubtitle')}</p>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -71,14 +73,14 @@ export const AdminDashboard = () => {
             className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-extrabold rounded-xl border border-indigo-200 transition-colors"
           >
             <FileCheck2 className="w-4 h-4 text-indigo-600" />
-            Proof Approvals ({pendingEMISubmissionsCount})
+            {t('nav.emiSubmissions')} ({pendingEMISubmissionsCount})
           </Link>
           <Link
             to="/admin/loan-requests"
             className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-extrabold rounded-xl border border-amber-200 transition-colors"
           >
             <BadgeIndianRupee className="w-4 h-4 text-amber-600" />
-            Loan Requests ({loans.pendingRequestsCount || 0})
+            {t('nav.loanRequests')} ({loans.pendingRequestsCount || 0})
           </Link>
         </div>
       </div>
@@ -89,15 +91,15 @@ export const AdminDashboard = () => {
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold text-brand-200 uppercase tracking-wider">
               <Building2 className="w-4 h-4 text-brand-400" />
-              <span>Mitra-Mandal Treasury & Group Pool Balance</span>
+              <span>{t('dashboard.treasuryPool')}</span>
             </div>
             <div className="text-3xl sm:text-5xl font-black mt-2 tracking-tight">
               {formatCurrency(fundSummary.currentBalance)}
             </div>
             <div className="flex flex-wrap items-center gap-4 text-xs text-brand-200 mt-3 pt-3 border-t border-white/10">
-              <span>Total Group Income: <strong className="text-emerald-400">{formatCurrency(fundSummary.totalIncome)}</strong></span>
+              <span>{t('dashboard.totalIncome')}: <strong className="text-emerald-400">{formatCurrency(fundSummary.totalIncome)}</strong></span>
               <span>•</span>
-              <span>Total Disbursed / Expenses: <strong className="text-rose-300">{formatCurrency(fundSummary.totalExpense)}</strong></span>
+              <span>{t('dashboard.totalExpenses')}: <strong className="text-rose-300">{formatCurrency(fundSummary.totalExpense)}</strong></span>
             </div>
           </div>
 
@@ -107,7 +109,7 @@ export const AdminDashboard = () => {
               className="px-5 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white text-xs font-bold rounded-xl transition-all border border-white/15 flex items-center justify-center gap-2"
             >
               <Wallet className="w-4 h-4 text-emerald-400" />
-              <span>Fund Ledger</span>
+              <span>{t('dashboard.fundLedgerBtn')}</span>
               <ArrowRight className="w-4 h-4 opacity-70" />
             </Link>
             <Link
@@ -115,7 +117,7 @@ export const AdminDashboard = () => {
               className="px-5 py-3 bg-white text-gray-900 hover:bg-gray-100 text-xs font-extrabold rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
             >
               <FileSpreadsheet className="w-4 h-4 text-brand-600" />
-              <span>Financial Reports</span>
+              <span>{t('dashboard.financialReportsBtn')}</span>
             </Link>
           </div>
         </div>
@@ -128,24 +130,24 @@ export const AdminDashboard = () => {
           <div>
             <div className="flex justify-between items-center">
               <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 flex items-center gap-1.5">
-                <FileCheck2 className="w-4 h-4 text-indigo-600" /> EMI Screenshot Submissions
+                <FileCheck2 className="w-4 h-4 text-indigo-600" /> {t('dashboard.proofSubmissions')}
               </span>
               {pendingEMISubmissionsCount > 0 && (
-                <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-[10px] font-bold rounded-full">Action Needed</span>
+                <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-[10px] font-bold rounded-full">{t('status.pending')}</span>
               )}
             </div>
             <div className="text-3xl font-black text-gray-900 mt-2">
               {pendingEMISubmissionsCount}
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Member payment screenshots awaiting review, verification, and Cloudinary auto-cleanup.
+              {t('dashboard.proofSubmissionsDesc')}
             </p>
           </div>
           <Link
             to="/admin/emi-submissions"
             className="w-full py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 text-xs font-extrabold rounded-xl text-center transition-colors flex items-center justify-center gap-1.5"
           >
-            <span>Review Submissions</span>
+            <span>{t('actions.reviewSubmissions')}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -155,24 +157,24 @@ export const AdminDashboard = () => {
           <div>
             <div className="flex justify-between items-center">
               <span className="text-xs font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1.5">
-                <BadgeIndianRupee className="w-4 h-4 text-amber-600" /> Loan Request Applications
+                <BadgeIndianRupee className="w-4 h-4 text-amber-600" /> {t('dashboard.loanRequestsCard')}
               </span>
               {(loans.pendingRequestsCount || 0) > 0 && (
-                <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-bold rounded-full">New Request</span>
+                <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-bold rounded-full">{t('status.pending')}</span>
               )}
             </div>
             <div className="text-3xl font-black text-gray-900 mt-2">
               {loans.pendingRequestsCount || 0}
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Community loan applications submitted by members waiting for admin approval & schedule creation.
+              {t('dashboard.loanRequestsDesc')}
             </p>
           </div>
           <Link
             to="/admin/loan-requests"
             className="w-full py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-extrabold rounded-xl text-center transition-colors flex items-center justify-center gap-1.5"
           >
-            <span>Approve Loan Requests</span>
+            <span>{t('actions.approveLoanRequests')}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -182,24 +184,24 @@ export const AdminDashboard = () => {
           <div>
             <div className="flex justify-between items-center">
               <span className="text-xs font-bold uppercase tracking-wider text-purple-700 flex items-center gap-1.5">
-                <UserCheck className="w-4 h-4 text-purple-600" /> Member Registration Approvals
+                <UserCheck className="w-4 h-4 text-purple-600" /> {t('dashboard.memberRegistrations')}
               </span>
               {(members.pending || 0) > 0 && (
-                <span className="px-2 py-0.5 bg-purple-100 text-purple-800 text-[10px] font-bold rounded-full">New Users</span>
+                <span className="px-2 py-0.5 bg-purple-100 text-purple-800 text-[10px] font-bold rounded-full">{t('status.pending')}</span>
               )}
             </div>
             <div className="text-3xl font-black text-gray-900 mt-2">
               {members.pending || 0}
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              New member signups pending admin verification before granting login access to portal.
+              {t('dashboard.memberRegistrationsDesc')}
             </p>
           </div>
           <Link
             to="/admin/members?status=PENDING"
             className="w-full py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-extrabold rounded-xl text-center transition-colors flex items-center justify-center gap-1.5"
           >
-            <span>Manage Registrations</span>
+            <span>{t('actions.manageRegistrations')}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -213,10 +215,10 @@ export const AdminDashboard = () => {
           </div>
           <div>
             <span className="text-xs font-black uppercase tracking-wider block opacity-90">
-              Active Password Reset Code
+              {t('dashboard.passwordResetCode')}
             </span>
             <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded-full inline-block mt-0.5 whitespace-nowrap">
-              Admin Single-Use
+              {t('dashboard.adminSingleUse')}
             </span>
           </div>
         </div>

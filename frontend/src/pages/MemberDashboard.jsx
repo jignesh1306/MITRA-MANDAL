@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import api from '../services/api';
 import { formatCurrency } from '../utils/formatters';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
@@ -17,6 +18,7 @@ import {
 
 export const MemberDashboard = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -51,15 +53,15 @@ export const MemberDashboard = () => {
           <div className="flex items-center justify-between">
             <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[11px] font-bold tracking-wide text-brand-100">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Community Group Capital</span>
+              <span>{t('dashboard.communityCapital')}</span>
             </div>
             <span className="text-[10px] font-bold bg-white/15 px-2.5 py-1 rounded-full text-white/90 group-hover:bg-white/25 transition-all flex items-center gap-1">
-              View Report <ArrowUpRight className="w-3 h-3" />
+              {t('dashboard.viewReport')} <ArrowUpRight className="w-3 h-3" />
             </span>
           </div>
 
           <span className="text-xs font-semibold text-blue-100 uppercase tracking-wider block pt-1">
-            Total Group Fund Balance
+            {t('dashboard.totalGroupFundBalance')}
           </span>
 
           <div className="text-3xl sm:text-5xl font-black tracking-tight">
@@ -67,7 +69,7 @@ export const MemberDashboard = () => {
           </div>
 
           <p className="text-xs text-blue-100 font-medium">
-            Overall collective treasury fund balance available in Mitra-Mandal
+            {t('dashboard.treasuryDesc')}
           </p>
         </div>
       </motion.div>
@@ -75,7 +77,7 @@ export const MemberDashboard = () => {
       {/* 2. Three Main Feature Buttons */}
       <div className="space-y-3">
         <h2 className="text-xs font-extrabold text-gray-500 uppercase tracking-wider">
-          Quick Services & Features
+          {t('dashboard.quickServices')}
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -95,15 +97,15 @@ export const MemberDashboard = () => {
               <div className="space-y-0.5 flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-1">
                   <h3 className="text-base font-black text-gray-900 group-hover:text-emerald-700 transition-colors truncate">
-                    Submit Your EMI
+                    {t('dashboard.submitYourEmi')}
                   </h3>
                   <ArrowUpRight className="w-4 h-4 text-gray-400 group-hover:text-emerald-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
                 </div>
                 <p className="text-xs text-gray-500 font-medium leading-tight">
-                  Submit fund contribution or loan EMI with proof
+                  {t('dashboard.submitEmiDesc')}
                 </p>
                 <span className="inline-block text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 mt-1">
-                  Active Feature
+                  {t('dashboard.activeFeature')}
                 </span>
               </div>
             </Link>
@@ -125,12 +127,12 @@ export const MemberDashboard = () => {
               <div className="space-y-0.5 flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-1">
                   <h3 className="text-base font-black text-gray-900 group-hover:text-amber-700 transition-colors truncate">
-                    Apply for Loan
+                    {t('dashboard.applyForLoan')}
                   </h3>
                   <ArrowUpRight className="w-4 h-4 text-gray-400 group-hover:text-amber-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
                 </div>
                 <p className="text-xs text-gray-500 font-medium leading-tight">
-                  Request a new loan with reducing interest rate
+                  {t('dashboard.applyLoanDesc')}
                 </p>
               </div>
             </Link>
@@ -152,12 +154,12 @@ export const MemberDashboard = () => {
               <div className="space-y-0.5 flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-1">
                   <h3 className="text-base font-black text-gray-900 group-hover:text-brand-700 transition-colors truncate">
-                    EMI Calculator
+                    {t('dashboard.emiCalculator')}
                   </h3>
                   <ArrowUpRight className="w-4 h-4 text-gray-400 group-hover:text-brand-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
                 </div>
                 <p className="text-xs text-gray-500 font-medium leading-tight">
-                  Calculate interest rates & monthly schedules
+                  {t('dashboard.calculatorDesc')}
                 </p>
               </div>
             </Link>

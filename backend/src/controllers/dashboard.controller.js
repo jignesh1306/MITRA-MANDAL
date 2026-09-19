@@ -15,14 +15,55 @@ export const getAdminSummary = async (req, res, next) => {
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
 
-    const group = await Group.findOne();
-    const fundSummary = await getFundSummary(group?._id);
+    // 1. Run independent top-level queries concurrently
+    const [
+      group,
+      totalMembers,
+      activeMembers,
+      pendingMembersCount,
+      currentContribs,
+      activeLoans,
+      overdueEMIsCount,
+      pendingEMISubmissionsCount,
+      pendingLoanRequestsCount
+    ] = await Promise.all([
+      Group.findOne().lean(),
+      User.countDocuments({ role: 'MEMBER' }),
+      User.countDocuments({ role: 'MEMBER', status: 'ACTIVE' }),
+      User.countDocuments({ role: 'MEMBER', status: 'PENDING' }),
+      Contribution.find({ month: currentMonth, year: currentYear }).select('amount status').lean(),
+      Loan.find({ status: 'ACTIVE' }).select('_id principal').lean(),
+      LoanInstallment.countDocuments({ status: 'OVERDUE' }),
+      EMISubmission.countDocuments({ status: 'PENDING' }),
+      LoanRequest.countDocuments({ status: 'PENDING' })
+    ]);
 
-    const totalMembers = await User.countDocuments({ role: 'MEMBER' });
-    const activeMembers = await User.countDocuments({ role: 'MEMBER', status: 'ACTIVE' });
-    const pendingMembersCount = await User.countDocuments({ role: 'MEMBER', status: 'PENDING' });
+    // 2. Run second stage queries in parallel: fund summary, paid installments batch, 6-month transactions batch
+    const activeLoanIds = activeLoans.map(l => l._id);
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
-    const currentContribs = await Contribution.find({ month: currentMonth, year: currentYear });
+    const [fundSummary, paidInsts, recentTransactions] = await Promise.all([
+      getFundSummary(group?._id),
+      activeLoanIds.length > 0 
+        ? LoanInstallment.find({ loanId: { $in: activeLoanIds }, status: 'PAID' }).select('loanId principal').lean()
+        : Promise.resolve([]),
+      Transaction.find({ date: { $gte: sixMonthsAgo } }).select('type amount date').lean()
+    ]);
+
+    // Group paid installments by loanId in memory (O(N) instead of N database queries)
+    const paidByLoanId = new Map();
+    for (const inst of paidInsts) {
+      const key = inst.loanId.toString();
+      paidByLoanId.set(key, (paidByLoanId.get(key) || 0) + (inst.principal || 0));
+    }
+
+    let totalOutstandingPrincipal = 0;
+    for (const l of activeLoans) {
+      const paidP = paidByLoanId.get(l._id.toString()) || 0;
+      totalOutstandingPrincipal += Math.max(0, l.principal - paidP);
+    }
+
+    // Tally current month contributions
     let paidThisMonth = 0;
     let pendingThisMonth = 0;
     let paidCount = 0;
@@ -38,18 +79,7 @@ export const getAdminSummary = async (req, res, next) => {
       }
     }
 
-    const activeLoans = await Loan.find({ status: 'ACTIVE' }).populate('memberId', 'name');
-    let totalOutstandingPrincipal = 0;
-    for (const l of activeLoans) {
-      const paidInsts = await LoanInstallment.find({ loanId: l._id, status: 'PAID' });
-      const paidP = paidInsts.reduce((acc, i) => acc + i.principal, 0);
-      totalOutstandingPrincipal += (l.principal - paidP);
-    }
-
-    const overdueEMIsCount = await LoanInstallment.countDocuments({
-      status: 'OVERDUE'
-    });
-
+    // Monthly charts bucketed in memory from the single query
     const monthlyCharts = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -57,15 +87,17 @@ export const getAdminSummary = async (req, res, next) => {
       const y = d.getFullYear();
       const monthLabel = d.toLocaleString('en-US', { month: 'short' }) + ' ' + y;
 
-      const mStart = new Date(y, m - 1, 1);
-      const mEnd = new Date(y, m, 0, 23, 59, 59);
+      const mStart = new Date(y, m - 1, 1).getTime();
+      const mEnd = new Date(y, m, 0, 23, 59, 59).getTime();
 
-      const txs = await Transaction.find({ date: { $gte: mStart, $lte: mEnd } });
       let income = 0;
       let expense = 0;
-      for (const t of txs) {
-        if (t.type === 'INCOME') income += t.amount / 100;
-        if (t.type === 'EXPENSE') expense += t.amount / 100;
+      for (const t of recentTransactions) {
+        const tTime = new Date(t.date).getTime();
+        if (tTime >= mStart && tTime <= mEnd) {
+          if (t.type === 'INCOME') income += t.amount / 100;
+          if (t.type === 'EXPENSE') expense += t.amount / 100;
+        }
       }
 
       monthlyCharts.push({
@@ -74,9 +106,6 @@ export const getAdminSummary = async (req, res, next) => {
         expense
       });
     }
-
-    const pendingEMISubmissionsCount = await EMISubmission.countDocuments({ status: 'PENDING' });
-    const pendingLoanRequestsCount = await LoanRequest.countDocuments({ status: 'PENDING' });
 
     res.json({
       group,
@@ -119,38 +148,48 @@ export const getMemberSummary = async (req, res, next) => {
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
 
-    const group = await Group.findOne();
-    const groupFundSummary = await getFundSummary(group?._id);
+    // Run first stage queries concurrently
+    const [group, currentContrib, allPaidContribs, activeLoan, memberFines] = await Promise.all([
+      Group.findOne().lean(),
+      Contribution.findOne({
+        memberId: userId,
+        month: currentMonth,
+        year: currentYear
+      }).lean(),
+      Contribution.find({ memberId: userId, status: 'PAID' }).select('amount').lean(),
+      Loan.findOne({ memberId: userId, status: 'ACTIVE' }).lean(),
+      Transaction.find({ memberId: userId, category: 'FINE' }).select('amount').lean()
+    ]);
 
-    const currentContrib = await Contribution.findOne({
-      memberId: userId,
-      month: currentMonth,
-      year: currentYear
-    });
+    // Run second stage queries concurrently
+    const [groupFundSummary, installments] = await Promise.all([
+      getFundSummary(group?._id),
+      activeLoan 
+        ? LoanInstallment.find({ loanId: activeLoan._id }).sort({ installmentNumber: 1 }).lean()
+        : Promise.resolve([])
+    ]);
 
-    const allPaidContribs = await Contribution.find({ memberId: userId, status: 'PAID' });
-    const totalContributed = allPaidContribs.reduce((acc, c) => acc + c.amount, 0);
+    const totalContributed = allPaidContribs.reduce((acc, c) => acc + (c.amount || 0), 0);
+    const totalExtraInterestPenalty = memberFines.reduce((acc, f) => acc + (f.amount || 0), 0);
 
-    const activeLoan = await Loan.findOne({ memberId: userId, status: 'ACTIVE' });
     let loanSummary = null;
     let nextEMI = null;
 
     if (activeLoan) {
-      const installments = await LoanInstallment.find({ loanId: activeLoan._id }).sort({ installmentNumber: 1 });
       let paidPrincipal = 0;
       let paidInterest = 0;
 
       for (const inst of installments) {
         if (inst.status === 'PAID') {
-          paidPrincipal += inst.principal;
-          paidInterest += inst.interest;
+          paidPrincipal += (inst.principal || 0);
+          paidInterest += (inst.interest || 0);
         } else if (!nextEMI && (inst.status === 'DUE' || inst.status === 'UPCOMING' || inst.status === 'OVERDUE')) {
           nextEMI = inst;
         }
       }
 
-      const remainingPrincipal = activeLoan.principal - paidPrincipal;
-      const progressPercent = Math.round((paidPrincipal / activeLoan.principal) * 100);
+      const remainingPrincipal = Math.max(0, activeLoan.principal - paidPrincipal);
+      const progressPercent = activeLoan.principal > 0 ? Math.round((paidPrincipal / activeLoan.principal) * 100) : 0;
 
       loanSummary = {
         _id: activeLoan._id,
@@ -175,6 +214,7 @@ export const getMemberSummary = async (req, res, next) => {
         paidAt: currentContrib?.paidAt
       },
       totalContributed,
+      totalExtraInterestPenalty,
       activeLoan: loanSummary,
       nextEMI
     });

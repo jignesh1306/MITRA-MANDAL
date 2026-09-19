@@ -15,5 +15,8 @@ const contributionSchema = new mongoose.Schema({
 });
 
 contributionSchema.index({ groupId: 1, memberId: 1, month: 1, year: 1 }, { unique: true });
+contributionSchema.index({ month: 1, year: 1, status: 1 });
+contributionSchema.index({ memberId: 1, status: 1 });
+contributionSchema.index({ memberId: 1, month: 1, year: 1 });
 
 export const Contribution = mongoose.model('Contribution', contributionSchema);
