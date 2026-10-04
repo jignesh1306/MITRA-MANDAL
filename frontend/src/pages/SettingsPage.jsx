@@ -12,8 +12,10 @@ import {
   Wallet, 
   BadgeIndianRupee, 
   LogOut,
-  Languages
+  Languages,
+  UserMinus
 } from 'lucide-react';
+import { RemoveMemberModal } from '../components/RemoveMemberModal';
 
 export const SettingsPage = () => {
   const { logout } = useAuth();
@@ -31,6 +33,7 @@ export const SettingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
+  const [isRemoveModalOpen, setIsRemoveModalOpen] = useState(false);
 
   useEffect(() => {
     api.get('/settings')
@@ -214,21 +217,42 @@ export const SettingsPage = () => {
         </div>
       </form>
 
-      {/* ADMIN LOGOUT SECTION */}
-      <div className="bg-rose-500/10 p-4 rounded-3xl border border-rose-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+      {/* REMOVE MEMBER SECTION */}
+      <div className="bg-rose-50 p-4 rounded-3xl border border-rose-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>
-          <h4 className="text-xs font-black text-rose-950 uppercase tracking-wider">{t('nav.logout')}</h4>
-          <p className="text-[11px] font-semibold text-rose-700">End your current session safely and return to the login screen.</p>
+          <h4 className="text-xs font-black text-rose-950 uppercase tracking-wider">Member Management</h4>
+          <p className="text-[11px] font-semibold text-rose-700">Permanently remove a member and their financial records.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsRemoveModalOpen(true)}
+          className="w-full sm:w-auto px-5 py-2.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-black rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
+        >
+          <UserMinus className="w-4 h-4" />
+          Remove Member
+        </button>
+      </div>
+
+      {/* ADMIN LOGOUT SECTION */}
+      <div className="bg-gray-100 p-4 rounded-3xl border border-gray-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div>
+          <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider">{t('nav.logout')}</h4>
+          <p className="text-[11px] font-semibold text-gray-600">End your current session safely and return to the login screen.</p>
         </div>
         <button
           type="button"
           onClick={handleLogout}
-          className="w-full sm:w-auto px-5 py-2.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-black rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
+          className="w-full sm:w-auto px-5 py-2.5 bg-gray-600 hover:bg-gray-700 active:bg-gray-800 text-white text-xs font-black rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
         >
           <LogOut className="w-4 h-4" />
           {t('nav.logout')}
         </button>
       </div>
+
+      <RemoveMemberModal 
+        isOpen={isRemoveModalOpen} 
+        onClose={() => setIsRemoveModalOpen(false)} 
+      />
     </div>
   );
 };

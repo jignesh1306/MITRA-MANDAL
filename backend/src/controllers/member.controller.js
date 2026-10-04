@@ -67,10 +67,12 @@ export const getMembers = async (req, res, next) => {
     }
 
     // Map active loans by memberId
-    const loanMap = new Map();
+    const loansMap = new Map();
     const activeLoanIds = [];
     for (const l of activeLoans) {
-      loanMap.set(l.memberId.toString(), l);
+      const key = l.memberId.toString();
+      if (!loansMap.has(key)) loansMap.set(key, []);
+      loansMap.get(key).push(l);
       activeLoanIds.push(l._id);
     }
 
@@ -103,10 +105,17 @@ export const getMembers = async (req, res, next) => {
         paidAmount: currentContribution?.status === 'PAID' ? currentContribution.amount : 0
       };
 
-      const activeLoan = loanMap.get(u._id.toString());
-      let loanSummary = null;
+      const userActiveLoans = loansMap.get(u._id.toString()) || [];
+      const activeLoansList = [];
+      let totalPrincipal = 0;
+      let totalPaidPrincipal = 0;
+      let totalRemainingPrincipal = 0;
+      let totalRemainingInterest = 0;
+      let totalCurrentEMI = 0;
+      let totalCurrentEMIPrincipal = 0;
+      let totalCurrentEMIInterest = 0;
 
-      if (activeLoan) {
+      for (const activeLoan of userActiveLoans) {
         const installments = installmentsByLoanId.get(activeLoan._id.toString()) || [];
         let paidP = 0;
         let paidI = 0;
@@ -123,8 +132,11 @@ export const getMembers = async (req, res, next) => {
 
         const remainingPrincipal = Math.max(0, activeLoan.principal - paidP);
         const remainingInterest = Math.max(0, activeLoan.totalInterest - paidI);
+        const currentEMI = nextDueInstallment ? nextDueInstallment.emi : 0;
+        const currentEMIPrincipal = nextDueInstallment ? nextDueInstallment.principal : 0;
+        const currentEMIInterest = nextDueInstallment ? nextDueInstallment.interest : 0;
 
-        loanSummary = {
+        activeLoansList.push({
           loanId: activeLoan._id,
           hasActiveLoan: true,
           principal: activeLoan.principal,
@@ -134,10 +146,32 @@ export const getMembers = async (req, res, next) => {
           paidInterest: paidI,
           remainingInterest,
           totalRepayment: activeLoan.totalRepayment,
-          currentEMI: nextDueInstallment ? nextDueInstallment.emi : 0,
-          currentEMIPrincipal: nextDueInstallment ? nextDueInstallment.principal : 0,
-          currentEMIInterest: nextDueInstallment ? nextDueInstallment.interest : 0,
+          currentEMI,
+          currentEMIPrincipal,
+          currentEMIInterest,
           progressPercent: activeLoan.principal > 0 ? Math.round((paidP / activeLoan.principal) * 100) : 0
+        });
+
+        totalPrincipal += activeLoan.principal;
+        totalPaidPrincipal += paidP;
+        totalRemainingPrincipal += remainingPrincipal;
+        totalRemainingInterest += remainingInterest;
+        totalCurrentEMI += currentEMI;
+        totalCurrentEMIPrincipal += currentEMIPrincipal;
+        totalCurrentEMIInterest += currentEMIInterest;
+      }
+
+      let loanSummary = null;
+      if (activeLoansList.length > 0) {
+        loanSummary = {
+          hasActiveLoan: true,
+          principal: totalPrincipal,
+          paidPrincipal: totalPaidPrincipal,
+          remainingPrincipal: totalRemainingPrincipal,
+          remainingInterest: totalRemainingInterest,
+          currentEMI: totalCurrentEMI,
+          currentEMIPrincipal: totalCurrentEMIPrincipal,
+          currentEMIInterest: totalCurrentEMIInterest
         };
       }
 
@@ -146,6 +180,7 @@ export const getMembers = async (req, res, next) => {
         groupFundBalance: fundSummary.currentBalance || 0,
         currentContribution: contributionInfo,
         loanSummary: loanSummary || { hasActiveLoan: false },
+        activeLoans: activeLoansList,
         totalExtraInterestPenalty: finesByMemberId.get(u._id.toString()) || 0
       };
     });
@@ -410,6 +445,35 @@ export const updateMember = async (req, res, next) => {
     }
 
     res.json(user);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteMember = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { deleteData } = req.query;
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: 'Member not found.' });
+    }
+
+    if (deleteData === 'true') {
+      await Contribution.deleteMany({ memberId: id });
+      await LoanInstallment.deleteMany({ loanId: { $in: await Loan.find({ memberId: id }).distinct('_id') } });
+      await Loan.deleteMany({ memberId: id });
+      await Transaction.deleteMany({ memberId: id });
+      await GroupMember.deleteMany({ userId: id });
+    } else {
+      // Just remove the group member association if exists
+      await GroupMember.deleteMany({ userId: id });
+    }
+
+    await User.findByIdAndDelete(id);
+
+    res.json({ message: 'Member removed successfully.' });
   } catch (error) {
     next(error);
   }

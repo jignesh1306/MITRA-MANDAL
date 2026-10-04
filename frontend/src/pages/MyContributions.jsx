@@ -4,17 +4,22 @@ import api from '../services/api';
 import { formatCurrency } from '../utils/formatters';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { StatusBadge } from '../components/StatusBadge';
-import { Wallet, CheckCircle2, Clock, AlertCircle, Calendar, ArrowUpRight } from 'lucide-react';
+import { Wallet, CheckCircle2, Clock, AlertCircle, Calendar, ArrowUpRight, TrendingUp } from 'lucide-react';
 
 export const MyContributions = () => {
   const [contributions, setContributions] = useState([]);
+  const [interestPool, setInterestPool] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const fetchMyContributions = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/contributions/my');
-      setContributions(res.data);
+      const [contribRes, summaryRes] = await Promise.all([
+        api.get('/contributions/my'),
+        api.get('/dashboard/member-summary')
+      ]);
+      setContributions(contribRes.data);
+      setInterestPool(summaryRes.data?.interestPool || null);
     } catch (err) {
       console.error(err);
     } finally {
@@ -69,6 +74,53 @@ export const MyContributions = () => {
           </div>
         </div>
       </motion.div>
+
+      {/* Interest Share Per Member Card */}
+      {interestPool && interestPool.totalGroupInterestPool > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="rounded-3xl bg-white border border-blue-100 shadow-sm p-4 sm:p-5"
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
+              <TrendingUp className="w-4 h-4 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="text-xs font-black text-gray-900 uppercase tracking-wider">Your Interest Share</h3>
+              <p className="text-[10px] text-gray-500 font-medium">Your portion of the group's total interest earned</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <div className="p-3 bg-blue-50 rounded-2xl text-center">
+              <div className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Loan Interest</div>
+              <div className="text-sm font-black text-blue-900">{formatCurrency(interestPool.totalGroupInterest)}</div>
+            </div>
+            <div className="p-3 bg-orange-50 rounded-2xl text-center">
+              <div className="text-[10px] font-bold text-orange-600 uppercase tracking-wider mb-1">Penalty</div>
+              <div className="text-sm font-black text-orange-900">{formatCurrency(interestPool.totalGroupPenalty)}</div>
+            </div>
+            <div className="p-3 bg-emerald-50 rounded-2xl text-center">
+              <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Total Pool</div>
+              <div className="text-sm font-black text-emerald-900">{formatCurrency(interestPool.totalGroupInterestPool)}</div>
+            </div>
+          </div>
+
+          <div className="mt-3 p-3 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-bold text-blue-200 uppercase tracking-wider">Your Share</div>
+              <div className="text-[10px] text-blue-200 font-medium mt-0.5">
+                {formatCurrency(interestPool.totalGroupInterestPool)} ÷ {interestPool.totalActiveMembers} members
+              </div>
+            </div>
+            <div className="text-xl font-black text-white">
+              {formatCurrency(interestPool.interestSharePerMember)}
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Monthly Fund Schedule & History */}
       <div className="space-y-4">

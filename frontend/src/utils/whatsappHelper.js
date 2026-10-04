@@ -37,27 +37,58 @@ export const generateMemberWhatsAppMessage = (member) => {
   const fundDueAmount = isFundPaid ? 0 : fundExpected;
 
   // Loan details
-  const loan = member.loanSummary?.hasActiveLoan ? member.loanSummary : null;
+  const activeLoans = member.activeLoans && member.activeLoans.length > 0 
+    ? member.activeLoans 
+    : (member.loanSummary?.hasActiveLoan ? [member.loanSummary] : []);
+    
   let loanSection = '';
   let loanDueAmount = 0;
 
-  if (loan) {
-    const principal = Math.round((loan.principal || 0) / 100);
-    const paidPrincipal = Math.round((loan.paidPrincipal || 0) / 100);
-    const remainingPrincipal = Math.round((loan.remainingPrincipal || 0) / 100);
-    const remainingInterest = Math.round((loan.remainingInterest || 0) / 100);
-    const currentEMI = Math.round((loan.currentEMI || 0) / 100);
-
-    loanDueAmount = currentEMI > 0 ? currentEMI : (remainingPrincipal > 0 ? Math.min(remainingPrincipal, 5000) : 0);
-
+  if (activeLoans.length > 0) {
     loanSection = '━━━━━━━━━━━━━━━━━━\n' +
       '🏦 *લોન વિગત*\n' +
-      '━━━━━━━━━━━━━━━━━━\n' +
-      `📌 કુલ લોન: ${formatINR(principal)}\n` +
-      `💸 ચૂકવેલ: ${formatINR(paidPrincipal)}\n` +
-      `⏳ બાકી મુદ્દલ: ${formatINR(remainingPrincipal)}\n` +
-      `📈 બાકી વ્યાજ: ${formatINR(remainingInterest)}\n` +
-      (currentEMI > 0 ? `🔢 આ મહિને ભરવાનો EMI: ${formatINR(currentEMI)}\n` : '');
+      '━━━━━━━━━━━━━━━━━━\n';
+
+    let totalRemainingPrincipalSum = 0;
+    let totalRemainingInterestSum = 0;
+    let totalEMISum = 0;
+
+    activeLoans.forEach((loan, idx) => {
+      const principal = Math.round((loan.principal || 0) / 100);
+      const paidPrincipal = Math.round((loan.paidPrincipal || 0) / 100);
+      const remainingPrincipal = Math.round((loan.remainingPrincipal || 0) / 100);
+      const remainingInterest = Math.round((loan.remainingInterest || 0) / 100);
+      const currentEMI = Math.round((loan.currentEMI || 0) / 100);
+      
+      const due = currentEMI > 0 ? currentEMI : (remainingPrincipal > 0 ? Math.min(remainingPrincipal, 5000) : 0);
+      loanDueAmount += due;
+
+      totalRemainingPrincipalSum += remainingPrincipal;
+      totalRemainingInterestSum += remainingInterest;
+      totalEMISum += due;
+
+      if (activeLoans.length > 1) {
+        loanSection += `🔹 *લોન ${idx + 1}*\n`;
+      }
+
+      if (principal > 0) loanSection += `📌 કુલ લોન: ${formatINR(principal)}\n`;
+      if (paidPrincipal > 0) loanSection += `💸 ચૂકવેલ: ${formatINR(paidPrincipal)}\n`;
+      if (remainingPrincipal > 0) loanSection += `⏳ બાકી મુદ્દલ: ${formatINR(remainingPrincipal)}\n`;
+      if (remainingInterest > 0) loanSection += `📈 બાકી વ્યાજ: ${formatINR(remainingInterest)}\n`;
+      if (currentEMI > 0) loanSection += `🔢 આ મહિને ભરવાનો EMI: ${formatINR(currentEMI)}\n`;
+      
+      loanSection += '\n';
+    });
+
+    if (activeLoans.length > 1) {
+      loanSection += `📌 *કુલ લોન સમરી*\n`;
+      if (totalRemainingPrincipalSum > 0) loanSection += `⏳ કુલ બાકી મુદ્દલ: ${formatINR(totalRemainingPrincipalSum)}\n`;
+      if (totalRemainingInterestSum > 0) loanSection += `📈 કુલ બાકી વ્યાજ: ${formatINR(totalRemainingInterestSum)}\n`;
+      if (totalEMISum > 0) loanSection += `🔢 કુલ EMI: ${formatINR(totalEMISum)}\n`;
+      loanSection += '\n';
+    }
+
+    loanSection = loanSection.trimEnd();
   }
 
   // Total Group Fund

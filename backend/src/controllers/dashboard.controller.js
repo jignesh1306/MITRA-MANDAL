@@ -149,7 +149,7 @@ export const getMemberSummary = async (req, res, next) => {
     const currentYear = now.getFullYear();
 
     // Run first stage queries concurrently
-    const [group, currentContrib, allPaidContribs, activeLoan, memberFines] = await Promise.all([
+    const [group, currentContrib, allPaidContribs, activeLoan, memberFines, allGroupInterestTx, allGroupPenaltyTx, totalActiveMembers] = await Promise.all([
       Group.findOne().lean(),
       Contribution.findOne({
         memberId: userId,
@@ -158,7 +158,10 @@ export const getMemberSummary = async (req, res, next) => {
       }).lean(),
       Contribution.find({ memberId: userId, status: 'PAID' }).select('amount').lean(),
       Loan.findOne({ memberId: userId, status: 'ACTIVE' }).lean(),
-      Transaction.find({ memberId: userId, category: 'FINE' }).select('amount').lean()
+      Transaction.find({ memberId: userId, category: 'FINE' }).select('amount').lean(),
+      Transaction.find({ category: 'LOAN_INTEREST' }).select('amount').lean(),
+      Transaction.find({ category: 'FINE' }).select('amount').lean(),
+      User.countDocuments({ role: 'MEMBER', status: 'ACTIVE' })
     ]);
 
     // Run second stage queries concurrently
@@ -171,6 +174,12 @@ export const getMemberSummary = async (req, res, next) => {
 
     const totalContributed = allPaidContribs.reduce((acc, c) => acc + (c.amount || 0), 0);
     const totalExtraInterestPenalty = memberFines.reduce((acc, f) => acc + (f.amount || 0), 0);
+
+    // Group-wide totals for interest share calculation
+    const totalGroupInterest = allGroupInterestTx.reduce((acc, t) => acc + (t.amount || 0), 0);
+    const totalGroupPenalty = allGroupPenaltyTx.reduce((acc, t) => acc + (t.amount || 0), 0);
+    const totalGroupInterestPool = totalGroupInterest + totalGroupPenalty;
+    const interestSharePerMember = totalActiveMembers > 0 ? Math.round(totalGroupInterestPool / totalActiveMembers) : 0;
 
     let loanSummary = null;
     let nextEMI = null;
@@ -216,7 +225,14 @@ export const getMemberSummary = async (req, res, next) => {
       totalContributed,
       totalExtraInterestPenalty,
       activeLoan: loanSummary,
-      nextEMI
+      nextEMI,
+      interestPool: {
+        totalGroupInterest,
+        totalGroupPenalty,
+        totalGroupInterestPool,
+        interestSharePerMember,
+        totalActiveMembers
+      }
     });
   } catch (error) {
     next(error);

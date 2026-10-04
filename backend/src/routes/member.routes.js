@@ -1,5 +1,5 @@
 import express from 'express';
-import { getMembers, getMemberById, createMember, updateMember } from '../controllers/member.controller.js';
+import { getMembers, getMemberById, createMember, updateMember, deleteMember } from '../controllers/member.controller.js';
 import { authenticateUser } from '../middleware/auth.middleware.js';
 import { requireAdmin } from '../middleware/role.middleware.js';
 
@@ -11,5 +11,6 @@ router.get('/', getMembers);
 router.get('/:id', getMemberById);
 router.post('/', requireAdmin, createMember);
 router.patch('/:id', updateMember);
+router.delete('/:id', requireAdmin, deleteMember);
 
 export default router;

@@ -61,20 +61,28 @@ export const MemberDetailsAdmin = () => {
             type="button"
             title="WhatsApp પર હિસાબ મોકલો"
             onClick={() => {
-              const activeLoan = loans.find(l => l.status === 'ACTIVE');
+              const activeLoansList = loans.filter(l => l.status === 'ACTIVE');
               const memberPayload = {
                 name: user.name,
                 phone: user.phone,
                 currentContribution: data.currentContribution,
                 groupFundBalance: data.groupFundBalance,
                 totalExtraInterestPenalty: summary.totalExtraInterestPenalty || 0,
-                loanSummary: activeLoan ? {
+                activeLoans: activeLoansList.map(activeLoan => ({
                   hasActiveLoan: true,
                   principal: activeLoan.principal,
                   paidPrincipal: activeLoan.summary?.paidPrincipal || 0,
                   remainingPrincipal: activeLoan.summary?.remainingPrincipal || 0,
                   remainingInterest: activeLoan.summary?.remainingInterest || 0,
                   currentEMI: activeLoan.installments?.find(i => i.status !== 'PAID')?.emi || 0
+                })),
+                loanSummary: activeLoansList.length > 0 ? {
+                  hasActiveLoan: true,
+                  principal: activeLoansList.reduce((acc, l) => acc + (l.principal || 0), 0),
+                  paidPrincipal: activeLoansList.reduce((acc, l) => acc + (l.summary?.paidPrincipal || 0), 0),
+                  remainingPrincipal: activeLoansList.reduce((acc, l) => acc + (l.summary?.remainingPrincipal || 0), 0),
+                  remainingInterest: activeLoansList.reduce((acc, l) => acc + (l.summary?.remainingInterest || 0), 0),
+                  currentEMI: activeLoansList.reduce((acc, l) => acc + (l.installments?.find(i => i.status !== 'PAID')?.emi || 0), 0)
                 } : { hasActiveLoan: false }
               };
               const msg = generateMemberWhatsAppMessage(memberPayload);
