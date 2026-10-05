@@ -47,38 +47,56 @@ export const generateMonthlyContributions = async (groupId, month, year) => {
 };
 
 export const markContributionPaid = async (contributionId, adminUserId) => {
-  const contrib = await Contribution.findById(contributionId).populate('memberId', 'name email');
-  if (!contrib) throw new Error('Contribution record not found');
-  if (contrib.status === 'PAID') throw new Error('Contribution is already paid');
+  // Use findOneAndUpdate for atomic operation to prevent double-clicks creating duplicate transactions
+  const contrib = await Contribution.findOneAndUpdate(
+    { _id: contributionId, status: 'PENDING' },
+    { $set: { status: 'PROCESSING_PAYMENT' } }, // Temporary state to lock it
+    { new: true }
+  ).populate('memberId', 'name email');
 
-  const refId = await generateRefId('CON');
-  
-  const transaction = await Transaction.create({
-    referenceId: refId,
-    groupId: contrib.groupId,
-    type: 'INCOME',
-    category: 'MEMBER_CONTRIBUTION',
-    amount: contrib.amount,
-    memberId: contrib.memberId._id || contrib.memberId,
-    description: `${contrib.memberId.name || 'Member'} - Monthly Contribution (${contrib.month}/${contrib.year})`,
-    date: new Date(),
-    createdBy: adminUserId
-  });
+  if (!contrib) {
+    const checkContrib = await Contribution.findById(contributionId);
+    if (!checkContrib) throw new Error('Contribution record not found');
+    if (checkContrib.status === 'PAID') throw new Error('Contribution is already paid');
+    if (checkContrib.status === 'PROCESSING_PAYMENT') throw new Error('Contribution payment is already being processed');
+    throw new Error('Could not process contribution');
+  }
 
-  contrib.status = 'PAID';
-  contrib.paidAt = new Date();
-  contrib.recordedBy = adminUserId;
-  contrib.transactionId = transaction._id;
-  await contrib.save();
+  try {
+    const refId = await generateRefId('CON');
+    
+    const transaction = await Transaction.create({
+      referenceId: refId,
+      groupId: contrib.groupId,
+      type: 'INCOME',
+      category: 'MEMBER_CONTRIBUTION',
+      amount: contrib.amount,
+      memberId: contrib.memberId._id || contrib.memberId,
+      description: `${contrib.memberId.name || 'Member'} - Monthly Contribution (${contrib.month}/${contrib.year})`,
+      date: new Date(),
+      createdBy: adminUserId
+    });
 
-  await createAuditLog({
-    groupId: contrib.groupId,
-    userId: adminUserId,
-    action: 'CONTRIBUTION_MARKED_PAID',
-    entityType: 'Contribution',
-    entityId: contrib._id.toString(),
-    newValue: { status: 'PAID', paidAt: contrib.paidAt, transactionId: transaction._id }
-  });
+    // Now securely mark it as PAID
+    contrib.status = 'PAID';
+    contrib.paidAt = new Date();
+    contrib.recordedBy = adminUserId;
+    contrib.transactionId = transaction._id;
+    await contrib.save();
 
-  return { contribution: contrib, transaction };
+    await createAuditLog({
+      groupId: contrib.groupId,
+      userId: adminUserId,
+      action: 'CONTRIBUTION_MARKED_PAID',
+      entityType: 'Contribution',
+      entityId: contrib._id.toString(),
+      newValue: { status: 'PAID', paidAt: contrib.paidAt, transactionId: transaction._id }
+    });
+
+    return { contribution: contrib, transaction };
+  } catch (error) {
+    // Revert status if something failed
+    await Contribution.updateOne({ _id: contributionId }, { $set: { status: 'PENDING' } });
+    throw error;
+  }
 };
