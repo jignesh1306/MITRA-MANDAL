@@ -136,15 +136,31 @@ export const approveLoanRequest = async (requestId, adminUserId, overrideInsuffi
 };
 
 export const payInstallment = async (installmentId, adminUserId, componentType = 'FULL') => {
-  const inst = await LoanInstallment.findById(installmentId).populate({
-    path: 'loanId',
-    populate: { path: 'memberId', select: 'name email' }
-  });
-  if (!inst) throw new Error('Installment not found');
-  if (inst.status === 'PAID') throw new Error('EMI is already fully paid');
+  // Atomic lock: only proceed if status is NOT already PAID or PROCESSING
+  // This prevents double-click / double-call race conditions
+  const locked = await LoanInstallment.findOneAndUpdate(
+    { _id: installmentId, status: { $nin: ['PAID', 'PROCESSING_PAYMENT'] } },
+    { $set: { status: 'PROCESSING_PAYMENT' } },
+    { new: false }
+  );
 
-  const loan = inst.loanId;
-  const member = loan.memberId;
+  if (!locked) {
+    const check = await LoanInstallment.findById(installmentId);
+    if (!check) throw new Error('Installment not found');
+    if (check.status === 'PAID') throw new Error('EMI is already fully paid');
+    if (check.status === 'PROCESSING_PAYMENT') throw new Error('This EMI payment is already being processed');
+    throw new Error('Could not process installment payment');
+  }
+
+  try {
+    const inst = await LoanInstallment.findById(installmentId).populate({
+      path: 'loanId',
+      populate: { path: 'memberId', select: 'name email' }
+    });
+    if (!inst) throw new Error('Installment not found');
+
+    const loan = inst.loanId;
+    const member = loan.memberId;
 
   const principalToPay = (componentType === 'FULL' || componentType === 'PRINCIPAL')
     ? Math.max(0, inst.principal - (inst.paidPrincipal || 0))
@@ -238,6 +254,14 @@ export const payInstallment = async (installmentId, adminUserId, componentType =
   });
 
   return { installment: inst, principalTx, interestTx, loanStatus: loan.status };
+  } catch (error) {
+    // Reset status back from PROCESSING_PAYMENT so it can be retried
+    await LoanInstallment.updateOne(
+      { _id: installmentId, status: 'PROCESSING_PAYMENT' },
+      { $set: { status: locked.status } } // restore original status
+    );
+    throw error;
+  }
 };
 
 export const createPastCompletedLoan = async ({

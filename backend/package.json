@@ -8,6 +8,7 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "seed": "node src/seed/seed.js",
+    "cleanup:duplicates": "node src/utils/cleanDuplicateTransactions.js",
     "test": "vitest run"
   },
   "dependencies": {

@@ -11,7 +11,7 @@ const loanInstallmentSchema = new mongoose.Schema({
   paidPrincipal: { type: Number, default: 0 }, // in paise
   paidInterest: { type: Number, default: 0 },  // in paise
   remainingPrincipal: { type: Number, required: true }, // remaining loan principal after this installment in paise
-  status: { type: String, enum: ['UPCOMING', 'DUE', 'PAID', 'PARTIALLY_PAID', 'OVERDUE'], default: 'UPCOMING' },
+  status: { type: String, enum: ['UPCOMING', 'DUE', 'PAID', 'PARTIALLY_PAID', 'OVERDUE', 'PROCESSING_PAYMENT'], default: 'UPCOMING' },
   paidAt: { type: Date },
   recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   transactionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Transaction' }
